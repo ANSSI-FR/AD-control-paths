@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" type="text/css" href="resources/tooltip.css">
+    <link rel="stylesheet" type="text/css" href="resources/style.css">
+    <script src="resources/d3.v3.min.js"></script>
+    <script src="resources/jquery.min.js"></script>
+    <script src="resources/tooltip.js"></script>
+    <script src="resources/vizu.js"></script>
+</head>
+<body>
+<script>
+/* default values */
+var DEFAULT_JSON_FILE       = "input.json"
+var DEFAULT_WINDOW_WIDTH    = $(window).width();
+var DEFAULT_WINDOW_HEIGHT   = $(window).height();
+var DEFAULT_LAYOUT_CHARGE   = -300;
+var DEFAULT_LAYOUT_DISTANCE = 50;
+
+/* URL parameters */
+var paramJsonDataFile = urlParam("json") || DEFAULT_JSON_FILE;
+var paramNoLabel      = urlParam("nolabel") != "" ? true : false;
+var paramNoTooltip    = urlParam("notooltip") != "" ? true : false;
+var paramWindowWidth  = urlParam("width") || DEFAULT_WINDOW_WIDTH;
+var paramWindowHeight = urlParam("height") || DEFAULT_WINDOW_HEIGHT;
+var paramLayoutCharge = urlParam("charge") || DEFAULT_LAYOUT_CHARGE;
+var paramLayoutDist   = urlParam("dist") || DEFAULT_LAYOUT_DISTANCE;
+
+/* JSON data */
+var jsonData = loadJsonData(paramJsonDataFile);
+var jsonNodes = jsonData.nodes;
+var jsonLinks = jsonData.links;
+
+/* D3.JS data */
+var force = d3.layout.force()
+    .nodes(d3.values(jsonNodes))
+    .links(jsonLinks)
+    .size([paramWindowWidth, paramWindowHeight])
+    .linkDistance(paramLayoutDist)
+    .charge(paramLayoutCharge)
+    .on("tick", onTickRefreshFct)
+    .start();
+
+var svg = d3.select("body").append("svg")
+    .attr("width", paramWindowWidth)
+    .attr("height", paramWindowHeight);
+
+var firstX = true;
+var firstY = true;
+svg.append("defs").selectAll("marker")
+    .data(["arrowheadcentral", "arrowhead"])
+    .enter().append("marker")
+    .attr("id", function(d) { return d; })
+    .attr("viewBox", "0 -5 10 10")
+    .attr("refX", function(d) { var v = (firstX ? CENTRAL_NODE_PROPERTIES : OTHER_NODES_PROPERTIES).arrowX; firstX = false; return v; })
+    .attr("refY",  function(d) { var v = (firstY ? CENTRAL_NODE_PROPERTIES : OTHER_NODES_PROPERTIES).arrowY; firstY = false; return v; })
+    .attr("markerWidth", 6)
+    .attr("markerHeight", 6)
+    .attr("orient", "auto")
+    .append("path")
+    .attr("d", "M0,-5L10,0L0,5");
+
+svg.append("defs").selectAll("pattern")
+    .data(["diagonalHatch"])
+    .enter().append("pattern")
+    .attr("id", function(d) { return d; })
+    .attr("patternUnits", "userSpaceOnUse")
+    .attr("width", "4")
+    .attr("height", "4")
+    .attr("d", "M-1,1 l2,-2 M0,4 l4,-4 M3,5 l2,-2");
+
+var relations = svg.append("g").selectAll("path")
+    .data(force.links())
+    .enter().append("path")
+    .attr("class", "link")
+    .style("fill", "none")
+    .style("stroke", "#666")
+    .style("stroke-width", "1.5px")
+    .attr("marker-end", getMarker);
+
+var objects = svg.append("g").selectAll("circle")
+    .data(force.nodes())
+    .enter().append("circle")
+    .style("fill", getObjectStyleFillColor)
+    .style("stroke", getObjectStyleStrokeColor)
+    .style("stroke-width", getStrokeWidth)
+    .attr("r", getRadius)
+    .attr("class", getClass)
+    .call(force.drag);
+
+var noteLetterText = svg.append("g").selectAll("text")
+    .data(force.nodes())
+    .enter().append("text")
+    .style("font", "10px sans-serif")
+    .attr("text-anchor", "middle")
+    .attr("y", ".31em")
+    .text(getObjectStyleLetter);
+
+if(paramNoLabel == false) {
+    var labelsText = svg.append("g").selectAll("text")
+        .data(force.nodes())
+        .enter().append("text")
+        .style("font", "10px sans-serif")
+        .style("font-weight", getLabelWeight)
+        .attr("x", getLabelX)
+        .attr("y", ".31em")
+        .text(function (d) {return d.shortname});
+}
+
+/* Tick function */
+function onTickRefreshFct() {
+    relations.attr("d", linkArc);
+    objects.attr("transform", transform);
+    noteLetterText.attr("transform", transform);
+    if(paramNoLabel == false) {
+        labelsText.attr("transform", transform);
+    }
+}
+
+/* Hide relations on dblclick functions */
+var nodesToHideRelsFrom = []
+
+function setRelOpacity(d) {
+    var source = d.source.id;
+    var inArray = nodesToHideRelsFrom.indexOf(source);
+    return inArray == -1 ? 1 : 0;
+}
+
+function toggleRelsFromNode(d) {
+    d3.event.stopPropagation();
+    var node = d.id;
+    var inArray = nodesToHideRelsFrom.indexOf(node);
+    if (inArray == -1) {
+        // Add to array
+        nodesToHideRelsFrom.push(node);
+    } else {
+        // Remove from array
+        nodesToHideRelsFrom.splice(inArray, 1);
+    }
+    relations.style("opacity", setRelOpacity);
+}
+
+function resetAllRels() {
+    d3.event.stopPropagation();
+    nodesToHideRelsFrom = []
+    relations.style("opacity", setRelOpacity);
+}
+
+/* Events setup */
+// Global event
+svg.on("dblclick.global", resetAllRels);
+
+$(document).bind('DOMNodeInserted', function(event) {
+    // Tooltips events
+    if( paramNoTooltip == false ) {
+        svg.selectAll("circle").on("mousemove", showDetails);
+        svg.selectAll("circle").on("mouseout",  hideDetails);
+        svg.selectAll("path.link").on("mousemove", showDetails);
+        svg.selectAll("path.link").on("mouseout",  hideDetails);
+    }
+
+    // Hide relations events
+    svg.selectAll("circle").on("dblclick.circle", toggleRelsFromNode, true);
+});
+    </script>
+</body>
+</html>
