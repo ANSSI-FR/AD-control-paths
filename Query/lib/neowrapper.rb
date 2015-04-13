@@ -24,12 +24,16 @@ class NeoWrapper
   attr_accessor :maxdepth, :color, :verbose
 
   def initialize()
-    @neo = Neography::Rest.new
+    @neo = Neography::Rest.new( { :username => "neo4j", :password => "secret" } )
     @maxdepth = 20
     @color = false
     @verbose = false
     @nodecache = {}
     @relcache = {}
+  end
+
+  def set_password(passwd)
+    @neo = Neography::Rest.new( { :username => "neo4j", :password => passwd } )
   end
 
   def debug(msg)
@@ -78,6 +82,15 @@ class NeoWrapper
     return @neo.execute_query(query, { :name => name })["data"].first.first rescue nil
   end
 
+  def label(name)
+    query = ""
+    query << "MATCH (n) "
+    query << "WHERE n.name = { name } "
+    query << "RETURN DISTINCT labels(n)"
+
+    debug "cypher query: #{query}"
+    return @neo.execute_query(query, { :name => name })["data"].first.first rescue nil
+  end
 
   # node
   # direction: :from, :to
@@ -164,7 +177,7 @@ class NeoWrapper
     end
 
     info "found #{paths.size-1} path(s)" # do not count the 0-length path
-    return paths.join("\n")
+    return paths
   end
 
   # node
@@ -197,10 +210,10 @@ class NeoWrapper
     debug "filtering nodes (label=#{label})"
     query = ""
     query << "MATCH (n:#{label}) " # labels cannot be passed as parameters
-    query << "WHERE id(n) = { id } "
+    query << "WHERE id(n) IN { id } "
     query << "RETURN DISTINCT id(n)"
 
-    debug "cypher query: #{query} (#nodes=#{nodes.size})"
+    debug "cypher query: #{query} (#id=#{nodes.size})"
     return @neo.execute_query(query, { :id => nodes })["data"].map { |n| n.first }
   end
 
@@ -238,14 +251,14 @@ class NeoWrapper
     when :from
       # no need to check for maxlength, as control_nodes (above) only returns
       # nodes within reach
-      query << "MATCH path = allShortestPaths( (n)-->(control) ) "
+      query << "MATCH path = allShortestPaths( (n)-[*]->(control) ) "
     when :to
-      query << "MATCH path = allShortestPaths( (n)<--(control) ) "
+      query << "MATCH path = allShortestPaths( (n)<-[*]-(control) ) "
     else
       raise "unknown direction: #{direction}"
     end
     query << "WHERE id(n) = { n } "
-    query << "AND id(control) = { control } "
+    query << "AND id(control) IN { control } "
     query << "RETURN path"
 
     debug "cypher query: #{query} (#control=#{control.size})"
@@ -263,7 +276,7 @@ class NeoWrapper
     else
       raise "unknown direction: #{direction}"
     end
-    query << "WHERE id(n) = { id } "
+    query << "WHERE id(n) IN { id } "
     query << "AND NOT id(neighbours) IN { ignore } " if ignore
     query << "RETURN DISTINCT id(neighbours)"
 
@@ -274,7 +287,7 @@ class NeoWrapper
   def all_rels_between(nodes)
     query = ""
     query << "MATCH (n)-[r]->(m) "
-    query << "WHERE id(n) = { id } AND id(m) = { id } "
+    query << "WHERE id(n) IN { id } AND id(m) IN { id } "
     query << "RETURN DISTINCT id(r)"
     debug "cypher query: #{query} (#id=#{nodes.size})"
     return @neo.execute_query(query, { :id => nodes })["data"].flatten

@@ -8,6 +8,8 @@ public class ControlPathImporter {
   private BatchInserter inserter;
   private Map<String, Long> nodesId;
   private Map<String, String> nodesType;
+  private long importedNodes = 0;
+  private long importedRels = 0;
 
   public ControlPathImporter(String storeDir) {
     inserter = BatchInserters.inserter(storeDir);
@@ -106,6 +108,8 @@ public class ControlPathImporter {
       relTotal++;
     }
 
+    importedNodes += nodeTotal;
+    importedRels += relTotal;
     System.out.println(" " + nodeTotal + " new node(s), " + relTotal + " new relationship(s), skipped " + skippedLines + " line(s)");
   }
 
@@ -142,7 +146,8 @@ public class ControlPathImporter {
       }
     }
 
+    System.out.println("[+] shutdown...");
     imp.shutdown();
-    System.out.println("[+] done");
+    System.out.println("[+] done: " + imp.importedNodes + " node(s) / " + imp.importedRels + " relationship(s)");
   }
 }

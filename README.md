@@ -36,8 +36,12 @@ This repository contains tools that can be used to generate such graphs.
 
 0. Install Neo4j: download and extract [neo4j community edition](http://www.neo4j.org/download), then create an environment variable with its path. **Do not start the Neo4j server before importing your data.**
 
-        $ tar xzvf neo4j-community-2.1.2.tar.gz
-        $ export NEO4J=/path/to/neo4j-community-2.1.2
+        $ tar xzvf neo4j-community-2.2.0-unix.tar.gz
+        $ cd neo4j-community-2.2.0
+
+        # the following env variables will be used later
+        $ export NEO4J=$PWD # path to neo4j
+        $ export CLASSPATH=$NEO4J/lib/*:.
 
 0. Install Ruby:
 
@@ -62,8 +66,16 @@ This repository contains tools that can be used to generate such graphs.
     commands:
 
         $ cd vendor/cache
-        $ sudo gem install neograph-1.5.2.gem
+        $ sudo gem install neograph-1.7.2.gem
         [... install neography + dependencies ...]
+
+### Tested software versions
+
+- Linux distribution: Ubuntu 14.04
+- Java: 1.7.0
+- Neo4j: 2.2.0 (Unix flavor)
+- Ruby: 1.9.3
+- Neography: 1.7.2
 
 ## 2. USAGE CONTEXT
 
@@ -144,7 +156,8 @@ You can now import the dumped "control relations" TSV files in your Neo4j graph 
 
 0. Create the following environment variables:
 
-        $ export NEO4J=/path/to/neo4j-community-2.1.2
+        $ cd neo4j-community-2.2.0
+        $ export NEO4J=$PWD # path to neo4j
         $ export CLASSPATH=$NEO4J/lib/*:.
 
 0. Stop the Neo4j server if it is started:
@@ -163,6 +176,14 @@ You can now import the dumped "control relations" TSV files in your Neo4j graph 
 0. This will create a Neo4j database. You can then start the Neo4j server:
 
         $ $NEO4J/bin/neo4j start
+
+0. Setup a password for using Neo4j REST interface. Navigate to
+   `http://localhost:7474` (the web interface should be running). Enter the
+   default username and password (`neo4j` for both), then enter a new one. The
+   querying tool uses `secret` as a default password, but this can be changed
+   with the `--password` flag. By default, Neo4j only listens to local
+   connections. More information about this can be found on the official Neo4j
+   documentation.
 
 ### Options
 
@@ -196,8 +217,8 @@ The default output directory is `out` and contains the following generated files
 
     ./out
        |- *.json         # JSON files containing a graph that can then be visualized as SVG
-       |- *_nodes.tsv    # Lists of nodes existing in the above graphs
-       \- *_paths.tsv    # Lists of paths existing in the above graphs
+       |- *_nodes.txt    # Lists of nodes existing in the above graphs
+       \- *_paths.txt    # Lists of paths existing in the above graphs
 
 The default target are search with their english DN. You can choose another
 language with the `--lang` option. For now, only `en` and `fr` are supported.
@@ -220,6 +241,16 @@ The `Query/query.rb` program can also search paths for non-predefined targets, a
 certain special characters (such as `{`, found in GPO DN) have a meaning for
 the regexp engine. You should manually escape these characters, and search for
 `cn=\\{` to match those DN.
+
+0. Get more informations about a node:
+
+        $ ./query.rb --info 'domain admins'
+        [...]
+        cn=domain admins,cn=users,dc=dom2012r2,dc=local [5]
+            type: ["group"]
+            directly controlling 245 node(s)
+            directly controlled by 6 node(s)
+
 
 0. Search for nodes controlling another node. We can choose to output results to a
 file or to stdout (the `--` stops option processing, so `domain admins` is our

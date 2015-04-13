@@ -21,10 +21,12 @@ opts = GetoptLong.new(
   [ '--maxdepth', '-m', GetoptLong::REQUIRED_ARGUMENT ],
   [ '--nodetype', '-n', GetoptLong::REQUIRED_ARGUMENT ],
   [ '--lang', '-l', GetoptLong::REQUIRED_ARGUMENT ],
+  [ '--password', '-p', GetoptLong::REQUIRED_ARGUMENT ],
 
   # operations
   [ '--auto', '-A', GetoptLong::OPTIONAL_ARGUMENT ],
   [ '--search', '-S', GetoptLong::REQUIRED_ARGUMENT ],
+  [ '--info', '-I', GetoptLong::REQUIRED_ARGUMENT ],
   [ '--graph', '-G', GetoptLong::OPTIONAL_ARGUMENT ],
   [ '--path', '-P', GetoptLong::OPTIONAL_ARGUMENT ],
   [ '--nodes', '-N', GetoptLong::OPTIONAL_ARGUMENT ]
@@ -64,6 +66,10 @@ OPTIONS:
     --search NAME: search for a node with the given NAME and print its ID
                    NAME is interpreted as a Java regexp, so special charaters (such as '{') need to be escaped, or they will be interpreted
 
+    --info NAME: print information about the node with the given NAME
+                 information include known nodetype, number of directly controlling and controlled nodes
+                 NAME is also interpreted as a Java regexp
+
   --------------------------------------------------------------------------------
   FINE TUNING: tweak operations behaviour
 
@@ -82,6 +88,9 @@ OPTIONS:
 
   --nodetype TYPE: only outputs control nodes of type TYPE (use with --nodes)
 
+  --password PASSWORD: use this password instead of default one ('secret') to
+                       authenticate to the REST interface
+
   --------------------------------------------------------------------------------
   EYE CANDY
 
@@ -98,9 +107,27 @@ opts.each do |opt, arg|
   when '--help'
     usage
 
+  when '--password'
+    w.info "setting REST client password to \'#{arg}\'"
+    w.set_password arg
+
   when '--search'
     w.search(arg).each do |target|
       w.info "#{target} [#{w.id(target)}]"
+    end
+    exit 0
+
+  when '--info'
+    w.maxdepth = 1
+    w.search(arg).each do |target|
+      id = w.id(target)
+      res = "#{target} [#{id}]"
+      res << "\n\ttype: #{w.label(target)}"
+      n_from = w.control_nodes(id, :from, nil)
+      res << "\n\tdirectly controlling #{n_from.size} node(s)"
+      n_to = w.control_nodes(id, :to, nil)
+      res << "\n\tdirectly controlled by #{n_to.size} node(s)"
+      puts res
     end
     exit 0
 
@@ -177,7 +204,7 @@ if infos[:auto]
       begin
         Dir.chdir infos[:outdir] do
           fpaths = File.open(name_sym.to_s + "_#{defaults[:direction]}_short_paths.txt", "w")
-          fpaths.write(w.control_paths(w.id(target), defaults[:direction]))
+          fpaths.write(w.control_paths(w.id(target), defaults[:direction]).join("\n"))
           fpaths.write("\n")
           fpaths.close()
         end
@@ -192,7 +219,7 @@ if infos[:auto]
         Dir.chdir infos[:outdir] do
           fnodes = File.open(name_sym.to_s + "_#{defaults[:direction]}_nodes.txt", "w")
           nodes = w.control_nodes(w.id(target), defaults[:direction], nil)
-          fnodes.write( nodes.map { |n| w.nodename(n) }.join("\n"))
+          fnodes.write( nodes.map { |n| w.nodename(n) }.sort.join("\n"))
           fnodes.write("\n")
           fnodes.close()
         end
@@ -273,7 +300,7 @@ end
 if infos[:path]
   w.info "#{infos[:type]} control paths #{infos[:direction]} node number #{target_id}"
   begin
-    infos[:path].write(w.control_paths(target_id, infos[:direction]))
+    infos[:path].write(w.control_paths(target_id, infos[:direction]).join("\n"))
     infos[:path].write("\n")
     infos[:path].close
   rescue RuntimeError, Neography::NeographyError => e
@@ -286,7 +313,7 @@ if infos[:nodes]
   w.info "control nodes #{"with type #{infos[:label]} " if infos[:label]}#{infos[:direction]} node number #{target_id}"
   nodes = w.control_nodes(target_id, infos[:direction], infos[:label])
   begin
-    infos[:nodes].write( nodes.map { |n| w.nodename(n) }.join("\n"))
+    infos[:nodes].write( nodes.map { |n| w.nodename(n) }.sort.join("\n"))
     infos[:nodes].write("\n")
     infos[:nodes].close
   rescue RuntimeError, Neography::NeographyError => e
