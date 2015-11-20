@@ -11,8 +11,8 @@ public class ControlPathImporter {
   private long importedNodes = 0;
   private long importedRels = 0;
 
-  public ControlPathImporter(String storeDir) {
-    inserter = BatchInserters.inserter(storeDir);
+  public ControlPathImporter(String storeDir) throws IOException {
+    inserter = BatchInserters.inserter(new File(storeDir));
     nodesId = new HashMap<String, Long>();
     nodesType = new HashMap<String, String>();
   }
@@ -119,6 +119,7 @@ public class ControlPathImporter {
 
   public static void main(String[] args) {
     int i = 0;
+    ControlPathImporter imp = null;
 
     if (args.length < 3) {
       System.err.println("Usage:\tjava ControlPathImporter [GRAPH-DB] [OBJECT-LIST] [RELATIONS]");
@@ -128,7 +129,13 @@ public class ControlPathImporter {
       return;
     }
 
-    ControlPathImporter imp = new ControlPathImporter(args[0]);
+    System.out.println("[+] creating new store at " + args[0] + " ...");
+    try {
+      imp = new ControlPathImporter(args[0]);
+    } catch (IOException e) {
+        System.out.println("[!] failed to create store: " + e.getMessage());
+        return;
+    }
 
     System.out.print("[+] load mapping file " + args[1] + " ...");
     try {
