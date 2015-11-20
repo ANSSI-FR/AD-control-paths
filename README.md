@@ -28,7 +28,7 @@ This repository contains tools that can be used to generate such graphs.
 - **Dump** tools run on Windows (tested on Windows 7 and later).
 - **Import**, **Query** and **Visualize** tools should run on anything supporting Neo4j, Java and Ruby, but have mostly been tested on Linux.
 
-### Installation steps (tested on Ubuntu 14.04):
+### Installation steps (tested on Ubuntu 14.04 and Debian 8):
 
 0. Install Java:
 
@@ -36,8 +36,8 @@ This repository contains tools that can be used to generate such graphs.
 
 0. Install Neo4j: download and extract [neo4j community edition](http://www.neo4j.org/download), then create an environment variable with its path. **Do not start the Neo4j server before importing your data.**
 
-        $ tar xzvf neo4j-community-2.2.0-unix.tar.gz
-        $ cd neo4j-community-2.2.0
+        $ tar xzvf neo4j-community-2.3.1-unix.tar.gz
+        $ cd neo4j-community-2.3.1
 
         # the following env variables will be used later
         $ export NEO4J=$PWD # path to neo4j
@@ -71,11 +71,11 @@ This repository contains tools that can be used to generate such graphs.
 
 ### Tested software versions
 
-- Linux distribution: Ubuntu 14.04
+- Linux distribution: Ubuntu 14.04 and Debian 8
 - Java: 1.7.0
-- Neo4j: 2.2.0 (Unix flavor)
-- Ruby: 1.9.3
-- Neography: 1.7.2
+- Neo4j: 2.3.1 (Unix flavor)
+- Ruby: 2.5.1
+- Neography: 1.8.0
 
 ## 2. USAGE CONTEXT
 
@@ -156,7 +156,7 @@ You can now import the dumped "control relations" TSV files in your Neo4j graph 
 
 0. Create the following environment variables:
 
-        $ cd neo4j-community-2.2.0
+        $ cd neo4j-community-2.3.1
         $ export NEO4J=$PWD # path to neo4j
         $ export CLASSPATH=$NEO4J/lib/*:.
 
