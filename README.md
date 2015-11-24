@@ -74,7 +74,7 @@ This repository contains tools that can be used to generate such graphs.
 - Linux distribution: Ubuntu 14.04 and Debian 8
 - Java: 1.7.0
 - Neo4j: 2.3.1 (Unix flavor)
-- Ruby: 2.5.1
+- Ruby: 2.1.5
 - Neography: 1.8.0
 
 ## 2. USAGE CONTEXT
