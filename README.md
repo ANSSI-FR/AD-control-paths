@@ -86,7 +86,7 @@ Generating control paths graphs for your domain takes the 4 following steps:
 0. **Dump** data called **control relations** from the LDAP directory and the SYSVOL.
 0. **Import** these relations into a graph-oriented database (Neo4j).
 0. **Query** that database to export various nodes lists, control paths, or **create JSON files** representing control paths graphs.
-0. **Visualize** SVG graphs created from those JSON files.
+0. **Visualize** graphs created from those JSON files.
 
 ![Global process schema of generation of control paths](global-schema.png "Global process schema of generation of control paths")
 
@@ -216,7 +216,7 @@ The simplest mode is the "automatic mode", which will create graphs, paths, and 
 The default output directory is `out` and contains the following generated files:
 
     ./out
-       |- *.json         # JSON files containing a graph that can then be visualized as SVG
+       |- *.json         # JSON files containing a graph that can then be visualized
        |- *_nodes.txt    # Lists of nodes existing in the above graphs
        \- *_paths.txt    # Lists of paths existing in the above graphs
 
@@ -322,26 +322,17 @@ queries. You can limit the maximum search depth with the `--maxdepth` option.
 
 ## 6. VISUALIZE GRAPHS
 
-Generated JSON files can be visualized using the `Visualize/vizu.html` web page.
+ADCP uses the [OVALI](https://github.com/ANSSI-FR/OVALI) frontend to display
+JSON data files as graphs. Refer to the project's README for detailed
+instructions.
 
-0. Copy your JSON files in the `Visualize/data` folder.
+Quickstart:
 0. Run an HTTP server whose document root is the `Visualize` folder:
 
         $ cd Visualize
         $ python -m SimpleHTTPServer 8000
 
-0. In a browser, generate and visualize the wanted graph with the URL:
-        
-        http://localhost:8000/vizu.html?json=myproject/mygraph.json
-
-### Options
-
-- `?json=<path>`: relative path in the `Visualize/data` folder of the JSON file to use.
-- `&width=<int>&height=<int>`: width and height of the generated graph (by default, dimensions of the window are used).
-- `&nolabel`: do not display nodes shortnames.
-- `&notooltip`: do not display nodes distinguished names and relations on mouseover.
-- `&dist=<int>&charge=<int>`: values used to compute the graph layout (nodes distance and charge, default are respectively `-300` (repulsion between nodes) and `50`).
-
+0. Connect to http://localhost:8000 with a web browser.
 
 ## 7. KNOWN ISSUES
 
