@@ -25,7 +25,7 @@ PLUGIN_DECLARE_RESETREADING;
 
 /* --- DEFINES -------------------------------------------------------------- */
 #define LDPDUMP_ACE_TOKEN_COUNT         (2)
-#define LDPDUMP_SCHEMA_TOKEN_COUNT      (4)
+#define LDPDUMP_SCHEMA_TOKEN_COUNT      (5)
 #define LDPDUMP_LIST_TOKEN_COUNT        (4)
 
 #define LDPDUMP_HEADER_FIRST_TOKEN      _T("dn")
@@ -44,6 +44,7 @@ typedef enum _SCH_TSV_TOKENS {
     LdpSchSchemaIDGUID = 1,
     LdpSchGovernsID = 2,
     LdpSchDefaultSecurityDescriptor = 3,
+	LdpSchLDAPDisplayName = 4,
 } SCH_TSV_TOKENS;
 
 typedef enum _OBJ_TSV_TOKENS {
@@ -257,6 +258,8 @@ BOOL PLUGIN_IMPORTER_GETNEXTOBJ(
     ) {
     BOOL bResult = FALSE;
     LPTSTR tokens[LDPDUMP_LIST_TOKEN_COUNT] = { 0 };
+	DWORD i;
+	LPTSTR next;
 
     if (!gs_ObjFileName) {
         API_FATAL(_T("reading OBJ while 'ldpobj' option has not been specified"));
@@ -270,9 +273,23 @@ BOOL PLUGIN_IMPORTER_GETNEXTOBJ(
         obj->imported.dn = ApiStrDupCheckX(tokens[LdpListDn]);
         obj->imported.adminCount = STR_EMPTY(tokens[LdpListAdminCount]) ? 0 : 1;
 
-        // object classes are strings here, not ID :/ (ie. "top,container")
-        obj->imported.objectClassesIds = NULL;
-        obj->computed.objectClassCount = 0;
+		
+		i = 1;
+		next = strchr(tokens[LdpListObjectClass], ',');
+		while (next != NULL) {
+			next = strchr(next + 1, ',');
+			i++;
+		}
+		obj->computed.objectClassCount = i;
+		obj->imported.objectClassesNames = ApiLocalAllocCheckX((obj->computed.objectClassCount + 1) * sizeof(*(obj->imported.objectClassesNames)));
+		
+		i = 0;
+		obj->imported.objectClassesNames[0] = strtok_s(ApiStrDupCheckX(tokens[LdpListObjectClass]), ",", &next);
+		while (obj->imported.objectClassesNames[i] != NULL) {
+			i++ ;
+			obj->imported.objectClassesNames[i] = strtok_s(NULL, ",", &next);
+		}
+		
 
         if (!STR_EMPTY(tokens[LdpListObjectSid])) {
             API_LOG(Dbg, _T("Object <%s> has hex SID <%s>"), tokens[LdpListDn], tokens[LdpListObjectSid]);
@@ -310,6 +327,7 @@ BOOL PLUGIN_IMPORTER_GETNEXTSCH(
     else {
         sch->imported.dn = ApiStrDupCheckX(tokens[LdpSchDn]);
         sch->imported.defaultSecurityDescriptor = ApiStrDupCheckX(tokens[LdpSchDefaultSecurityDescriptor]);
+		sch->imported.lDAPDisplayName = ApiStrDupCheckX(tokens[LdpSchLDAPDisplayName]);
 
         if (!STR_EMPTY(tokens[LdpSchGovernsID])) {
             // governsID is given in the form of an OID. What we check here is only if the OID corresponds to a MS AD class (starts with "1.2.840.113556.1.5.")

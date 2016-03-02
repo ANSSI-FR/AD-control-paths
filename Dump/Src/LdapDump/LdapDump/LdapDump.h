@@ -15,7 +15,7 @@
 
 #define LDAP_DUMP_ATTR_COUNT_ACE        (1)
 #define LDAP_DUMP_ATTR_COUNT_OBJ        (3)
-#define LDAP_DUMP_ATTR_COUNT_SCH        (3)
+#define LDAP_DUMP_ATTR_COUNT_SCH        (4)
 
 #define LDAP_DUMP_FILTER_NTSD           _T("(") ## NONE(LDAP_ATTR_NTSD) ## _T("=*)")
 #define LDAP_DUMP_FILTER_ALL_OBJECTS    _T("(") ## NONE(LDAP_ATTR_OBJECT_CLASS) ## _T("=*)")
@@ -63,6 +63,7 @@ typedef enum _LDAP_DUMP_ATTR_SCH {
     AttrSch_schemaIDGUID = 0,
     AttrSch_governsID = 1,
     AttrSch_defaultSecurityDescriptor = 2,
+	AttrSch_lDAPDisplayName = 3,
 } LDAP_DUMP_ATTR_SCH;
 
 typedef enum _LDAP_DUMP_ATTR_FORMAT {

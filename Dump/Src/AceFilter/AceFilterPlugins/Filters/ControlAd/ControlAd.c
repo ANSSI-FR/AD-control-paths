@@ -99,6 +99,8 @@ BOOL PLUGIN_FILTER_FILTERACE(
     - Standards rights :
         - WRITE_DAC
         - WRITE_OWNER
+
+	- Object-specific rights :
         - WRITE_PROP :
     
     - Properties :
@@ -112,6 +114,7 @@ BOOL PLUGIN_FILTER_FILTERACE(
     - Extended rights (ADS_RIGHT_DS_CONTROL_ACCESS) :
         - all (empty guid)
         - Reset password
+		- DS Replication Get Changes All
 
     - Validated writes (ADS_RIGHT_DS_SELF) :
         - all (empty guid)
@@ -121,69 +124,12 @@ BOOL PLUGIN_FILTER_FILTERACE(
     DWORD dwAccessMask = 0;
     DWORD dwFlags = 0;
     DWORD i = 0;
-
-    //
-    // Only "*_ALLOWED_*" ace types can allow control
-    //
-    if (!IS_ALLOWED_ACE(ace->imported.raw))
-        return FALSE;
-
-    //
-    // Get properties
-    //
-    dwAccessMask = api->Ace.GetAccessMask(ace);
-    dwFlags = IS_OBJECT_ACE(ace->imported.raw) ? api->Ace.GetObjectFlags(ace) : 0;
-
-    //
-    // First, we have to check the objectType, to see if the ACE actually applies to this object.
-    // For this, we have to check if the objectType effectively represents a CLASS, and that the
-    // ACE does not only contains the CREATE/DELETE_CHILD rights (otherwise it is not a filter)
-    //
-    if (ace->imported.raw->AceType == ACCESS_ALLOWED_OBJECT_ACE_TYPE || ace->imported.raw->AceType == ACCESS_ALLOWED_CALLBACK_OBJECT_ACE_TYPE) {
-        if (dwAccessMask != ADS_RIGHT_DS_CREATE_CHILD && dwAccessMask != ADS_RIGHT_DS_DELETE_CHILD && dwAccessMask != (ADS_RIGHT_DS_CREATE_CHILD | ADS_RIGHT_DS_DELETE_CHILD)) {
-            if (dwFlags & ACE_OBJECT_TYPE_PRESENT) {
-                PIMPORTED_OBJECT object = api->Resolver.ResolverGetAceObject(ace);
-                GUID * objectType = api->Ace.GetObjectTypeAce(ace);
-                PIMPORTED_SCHEMA schemaObjectType = api->Resolver.GetSchemaByGuid(objectType);
-
-                if (!object) {
-                    API_LOG(Err, _T("Cannot lookup object <%s> to verify ACE filtering for ACE <%u>. Skipping."), ace->imported.objectDn, ace->computed.number);
-                    return FALSE;
-                }
-
-                if (!schemaObjectType) {
-                    // Object class is not representing a "class", this is not ACE filtering
-                }
-                else {
-                    PIMPORTED_OBJECT objectSchemaObjectType = api->Resolver.ResolverGetSchemaObject(schemaObjectType);
-                    if (!objectSchemaObjectType || objectSchemaObjectType->computed.objectClassCount != 1 || objectSchemaObjectType->imported.objectClassesIds[i] != DW_CLASS_SCHEMA) {
-                        // Object class is not representing a "class", this is not ACE filtering
-                    }
-                    else {
-                        for (i = 0; i < object->computed.objectClassCount; i++) {
-                            if (object->imported.objectClassesIds[i] == schemaObjectType->imported.governsID) {
-                                API_LOG(Dbg, _T("Ace <%u> passed objectType filtering (<%s> of type <%#08x>)"), ace->computed.number, ace->imported.objectDn, object->imported.objectClassesIds[i]);
-                                break; // found it
-                            }
-                        }
-
-                        if (i == object->computed.objectClassCount) {
-                            //
-                            // If we arrived here, this means that :
-                            //    - there is an ObjectType representing a "class" schema entry
-                            //    - the AccessMask contains other rights than only CREATE/DELETE_CHILD
-                            //    - the current object is not of the class pointed by the ObjectType
-                            // => thus, the ACE does not apply (ACE ObjectType filtering)
-                            //
-                            API_LOG(Dbg, _T("Ace <%u> is filtered by its objectType <%#08x> (object <%s>)"), ace->computed.number, schemaObjectType->imported.governsID, ace->imported.objectDn);
-                            return FALSE;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
+	
+	//
+	// Get properties
+	//
+	dwAccessMask = api->Ace.GetAccessMask(ace);
+	dwFlags = IS_OBJECT_ACE(ace->imported.raw) ? api->Ace.GetObjectFlags(ace) : 0;
 
     //
     // Control case : Generic right GENERIC_WRITE
@@ -278,11 +224,23 @@ BOOL PLUGIN_FILTER_FILTERACE(
         }
     } // OBJECT_TYPE_GUID_NEEDED(dwAccessMask))
 
+	//
+	// Only "*_ALLOWED_*" ace types can allow control
+	// But DENY ace on control parameters cannot be processed on a per-ace model in the control paths approach
+	//
+	if (!IS_ALLOWED_ACE(ace->imported.raw)) {	
+		for (i = 0; i < ACE_REL_COUNT; i++) {
+			if (HAS_RELATION(ace, i)) {
+				API_LOG(Succ, _T("<%s> control is limited by a DENY %s ACE on object <%s>"), api->Resolver.ResolverGetAceTrusteeStr(ace), api->Ace.GetAceRelationStr(i), api->Resolver.ResolverGetAceObject(ace)->imported.dn);
+			}
+		}
+		return FALSE;
+	}
+
     for (i = 0; i < ACE_REL_COUNT; i++) {
         if (HAS_RELATION(ace, i)) {
             return TRUE;
         }
     }
-
     return FALSE;
 }

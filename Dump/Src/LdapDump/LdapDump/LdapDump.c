@@ -24,15 +24,17 @@ static const LDAP_DUMP_ATTR_FORMAT gsc_aeAttrFormatsObj[LDAP_DUMP_ATTR_COUNT_OBJ
 };
 
 static const LPTSTR gsc_aszAttrNamesSch[LDAP_DUMP_ATTR_COUNT_SCH] = {
-    [AttrSch_schemaIDGUID] = LDAP_ATTR_SCHEMA_IDGUID,
-    [AttrSch_governsID] = LDAP_ATTR_GOVERNS_ID,
-    [AttrSch_defaultSecurityDescriptor] = LDAP_ATTR_DEFAULT_SD,
+	[AttrSch_schemaIDGUID] = LDAP_ATTR_SCHEMA_IDGUID,
+	[AttrSch_governsID] = LDAP_ATTR_GOVERNS_ID,
+	[AttrSch_defaultSecurityDescriptor] = LDAP_ATTR_DEFAULT_SD,
+	[AttrSch_lDAPDisplayName] = LDAP_ATTR_LDAPDISPLAYNAME,
 };
 
 static const LDAP_DUMP_ATTR_FORMAT gsc_aeAttrFormatsSch[LDAP_DUMP_ATTR_COUNT_SCH] = {
-    [AttrSch_schemaIDGUID] = AttrHex,
-    [AttrSch_governsID] = AttrStr,
-    [AttrSch_defaultSecurityDescriptor] = AttrStr,
+	[AttrSch_schemaIDGUID] = AttrHex,
+	[AttrSch_governsID] = AttrStr,
+	[AttrSch_defaultSecurityDescriptor] = AttrStr,
+	[AttrSch_lDAPDisplayName] = AttrStr,
 };
 
 

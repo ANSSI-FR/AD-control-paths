@@ -59,12 +59,6 @@ BOOL PLUGIN_FILTER_FILTERACE(
     DWORD i = 0;
 
     //
-    // Only "*_ALLOWED_*" ace types can allow "control"
-    //
-    if (!IS_ALLOWED_ACE(ace->imported.raw))
-        return FALSE;
-
-    //
     // Get properties
     //
     dwAccessMask = api->Ace.GetAccessMask(ace);
@@ -105,6 +99,18 @@ BOOL PLUGIN_FILTER_FILTERACE(
     if (dwAccessMask & FILE_APPENDDATA_ADDSUBDIR)
         SET_RELATION(ace, FS_RIGHT_APPENDDATA_ADDSUBDIR);
 
+	//
+	// Only "*_ALLOWED_*" ace types can allow control
+	// But DENY ace on control parameters cannot be processed on a per-ace model in the control paths approach
+	//
+	if (!IS_ALLOWED_ACE(ace->imported.raw)) {
+		for (i = 0; i < ACE_REL_COUNT; i++) {
+			if (HAS_RELATION(ace, i)) {
+				API_LOG(Succ, _T("<%s> control is limited by a DENY %s ACE on object <%s>"), api->Resolver.ResolverGetAceTrusteeStr(ace), api->Ace.GetAceRelationStr(i), api->Resolver.ResolverGetAceObject(ace)->imported.dn);
+			}
+		}
+		return FALSE;
+	}
 
     for (i = 0; i < ACE_REL_COUNT; i++) {
         if (HAS_RELATION(ace, i)) {

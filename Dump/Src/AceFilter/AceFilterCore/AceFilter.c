@@ -449,6 +449,16 @@ int main(
         }
     }
 
+	if (importerAce == PLUGIN_MAX_IMPORTERS){
+		FATAL(_T("ACE importer is missing"));
+	}
+	if (importerObj == PLUGIN_MAX_IMPORTERS){
+		FATAL(_T("Obj importer is missing"));
+	}
+	if (importerSch == PLUGIN_MAX_IMPORTERS){
+		FATAL(_T("Sch importer is missing"));
+	}
+
     // We allow no filter to be loaded, to permit ACE format conversion (direct link importer->writer)
     if (options.plugins.numberOfFilters > 0) {
         for (i = 0; i < options.plugins.numberOfFilters; i++) {
@@ -485,10 +495,10 @@ int main(
         LOG(Info, SUB_LOG(_T("Object cache count : <by-sid:%u> <by-dn:%u>")), CacheObjectBySidCount(), CacheObjectByDnCount());
     }
 
-    if (PluginsRequires(&options, OPT_REQ_GUID_RESOLUTION) || PluginsRequires(&options, OPT_REQ_CLASSID_RESOLUTION)) {
-        LOG(Info, SUB_LOG(_T("Plugins require GUID or CLASSID resolution, constructing schema cache")));
+	if (PluginsRequires(&options, OPT_REQ_GUID_RESOLUTION) || PluginsRequires(&options, OPT_REQ_CLASSID_RESOLUTION) || PluginsRequires(&options, OPT_REQ_DISPLAYNAME_RESOLUTION)) {
+        LOG(Info, SUB_LOG(_T("Plugins require GUID or CLASSID or DisplayName resolution, constructing schema cache")));
         ConstructSchemaCache(&options.plugins.importers[importerSch]);
-        LOG(Info, SUB_LOG(_T("Schema cache count : <by-guid:%u> <by-classid:%u>")), CacheSchemaByGuidCount(), CacheSchemaByClassidCount());
+        LOG(Info, SUB_LOG(_T("Schema cache count : <by-guid:%u> <by-classid:%u> <by-displayname:%u>")), CacheSchemaByGuidCount(), CacheSchemaByClassidCount(), CacheSchemaByDisplayNameCount());
     }
 
     if (PluginsRequires(&options, OPT_REQ_ADMINSDHOLDER_SD)) {

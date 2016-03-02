@@ -37,6 +37,11 @@ typedef struct _CACHE_SCHEMA_BY_CLASSID {
     PIMPORTED_SCHEMA schema;
 } CACHE_SCHEMA_BY_CLASSID, *PCACHE_SCHEMA_BY_CLASSID;
 
+typedef struct _CACHE_SCHEMA_BY_DISPLAYNAME {
+	LPTSTR displayname;
+	PIMPORTED_SCHEMA schema;
+} CACHE_SCHEMA_BY_DISPLAYNAME, *PCACHE_SCHEMA_BY_DISPLAYNAME;
+
 
 /* --- VARIABLES ------------------------------------------------------------ */
 /* --- PROTOTYPES ----------------------------------------------------------- */
@@ -55,6 +60,8 @@ DWORD CacheSchemaByGuidCount(
     );
 DWORD CacheSchemaByClassidCount(
     );
+DWORD CacheSchemaByDisplayNameCount(
+	);
 
 
 void CacheInsertObject(
@@ -77,5 +84,7 @@ PIMPORTED_SCHEMA CacheLookupSchemaByGuid(
 PIMPORTED_SCHEMA CacheLookupSchemaByClassid(
     _In_ DWORD classid
     );
-
+PIMPORTED_SCHEMA CacheLookupSchemaByDisplayName(
+	_In_ LPTSTR displayname
+	);
 #endif // __CACHE_H__

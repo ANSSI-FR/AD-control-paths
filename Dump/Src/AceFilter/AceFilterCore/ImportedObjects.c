@@ -186,7 +186,7 @@ BOOL IsInDefaultSd(
         for (i = 0; i < object->computed.objectClassCount; i++) {
             schemaClass = ResolverGetObjectObjectClass(object, i);
             if (!schemaClass) {
-                LOG(Err, _T("Failed to get class <%#08x> of object <%s> (ace <%u>)"), object->imported.objectClassesIds[i], object->imported.dn, ace->computed.number);
+                LOG(Err, _T("Failed to get class %s of object <%s> (ace <%u>)"), object->imported.objectClassesNames[i], object->imported.dn, ace->computed.number);
             }
             else {
                 sd = ResolverGetSchemaDefaultSD(schemaClass);
@@ -198,6 +198,84 @@ BOOL IsInDefaultSd(
     }
 
     return FALSE;
+}
+
+BOOL isObjectTypeClass(
+	_In_ PIMPORTED_ACE ace
+	) {
+	DWORD dwFlags = 0;
+	//
+	// No ObjectType GUID ?
+	//
+	dwFlags = IS_OBJECT_ACE(ace->imported.raw) ? GetObjectFlags(ace) : 0;
+	if ((dwFlags & ACE_OBJECT_TYPE_PRESENT) == 0)
+		return FALSE;
+
+	GUID * objectType = GetObjectTypeAce(ace);
+	PIMPORTED_SCHEMA schemaObjectType = GetSchemaByGuid(objectType);
+
+	if (!schemaObjectType) {
+		LOG(Dbg, _T("ObjectType GUID does not represent anything from the schema. object <%s> for ACE <%u>."), ace->imported.objectDn, ace->computed.number);
+		return FALSE;
+	}
+	PIMPORTED_OBJECT objectSchemaObjectType = ResolverGetSchemaObject(schemaObjectType);
+	if (!objectSchemaObjectType || objectSchemaObjectType->computed.objectClassCount != 2 || _tcscmp(objectSchemaObjectType->imported.objectClassesNames[1], _T("classSchema"))) {
+		LOG(Dbg, _T("ObjectType GUID does not represent a class. object <%s> for ACE <%u>."), ace->imported.objectDn, ace->computed.number);
+		return FALSE;
+	}
+	else {
+		LOG(Dbg, _T("Ace <%u> objectType GUID is a class. object <%s> (<%s>)"), ace->computed.number, ace->imported.objectDn, schemaObjectType->imported.lDAPDisplayName);
+		return TRUE;
+	}
+}
+
+
+BOOL isObjectTypeClassMatching(
+	_In_ PIMPORTED_ACE ace
+	) {
+	DWORD dwFlags = 0;
+	DWORD i = 0;
+	//
+	// We return FALSE for any non-matching conditions
+	//
+	dwFlags = IS_OBJECT_ACE(ace->imported.raw) ? GetObjectFlags(ace) : 0;
+	if ((dwFlags & ACE_OBJECT_TYPE_PRESENT) == 0)
+		return FALSE;
+	//
+	// First, we have to check the objectType, to see if the ACE actually applies to this object.
+	// For this, we have to check if the objectType effectively represents a CLASS, and that the
+	// ACE does not only contains the CREATE/DELETE_CHILD rights (otherwise it is not a filter)
+	//
+	PIMPORTED_OBJECT object = ResolverGetAceObject(ace);
+	GUID * objectType = GetObjectTypeAce(ace);
+	PIMPORTED_SCHEMA schemaObjectType = GetSchemaByGuid(objectType);
+
+	if (!object) {
+		LOG(Dbg, _T("Cannot lookup object <%s> to verify ACE filtering for ACE <%u>. Keep by default."), ace->imported.objectDn, ace->computed.number);
+		return FALSE;
+	}
+
+	if (!schemaObjectType) {
+		// ObjectType GUID does not represent anything from the schema, this is not ACE filtering so we keep it.
+		return FALSE;
+	}
+
+
+	if (isObjectTypeClass(ace)) {
+		for (i = 0; i < object->computed.objectClassCount; i++) {
+			if (_tcscmp(object->imported.objectClassesNames[i],schemaObjectType->imported.lDAPDisplayName) == 0) {
+				LOG(Dbg, _T("Ace <%u> objectType GUID is a matching class. (<%s>:  %s)"), ace->computed.number, ace->imported.objectDn, schemaObjectType->imported.lDAPDisplayName);
+				return TRUE; // found a match
+			}
+		}
+		LOG(Dbg, _T("Ace <%u> objectType GUID is a non-matching class (<%s>: %s)."), ace->computed.number, ace->imported.objectDn, schemaObjectType->imported.lDAPDisplayName);
+		return FALSE;
+	}
+	else {
+		// 
+		return FALSE;
+	}
+
 }
 
 void CacheActivateObjectCache(
@@ -276,6 +354,24 @@ PIMPORTED_OBJECT ResolverGetAceTrustee(
     return NULL_IF_BAD(ace->resolved.trustee);
 }
 
+PDWORD ResolverGetObjectClassesIds(
+	_In_ PIMPORTED_OBJECT obj
+	) {
+	DWORD i;
+	// Clean this
+	if (!obj->resolved.objectClassesIds) {
+		obj->resolved.objectClassesIds = (PDWORD)LocalAllocCheckX(sizeof(DWORD) * obj->computed.objectClassCount);
+		for (i = 0 ; i < obj->computed.objectClassCount ; i++)
+			obj->resolved.objectClassesIds[i] = (GetSchemaByDisplayName(obj->imported.objectClassesNames[i]))->imported.governsID;
+		if (!obj->resolved.objectClassesIds) {
+			LOG(Dbg, _T("Cannot resolve ClassesIds for object <%s> <%u>"), obj->imported.dn, obj->computed.number);
+			obj->resolved.objectClassesIds = BAD_POINTER;
+			}
+	}
+
+	return NULL_IF_BAD(obj->resolved.objectClassesIds);
+}
+
 /*
 PIMPORTED_OBJECT ResolverGetObjectPrimaryOwner(
     _In_ PIMPORTED_OBJECT obj
@@ -347,10 +443,10 @@ PIMPORTED_SCHEMA ResolverGetObjectObjectClass(
         obj->resolved.objectClasses = (PIMPORTED_SCHEMA*)LocalAllocCheckX(sizeof(PIMPORTED_SCHEMA)* obj->computed.objectClassCount);
     }
     if (!obj->resolved.objectClasses[idx]) {
-        obj->resolved.objectClasses[idx] = GetSchemaByClassid(obj->imported.objectClassesIds[idx]);
+        obj->resolved.objectClasses[idx] = GetSchemaByClassid(obj->resolved.objectClassesIds[idx]);
         if (!obj->resolved.objectClasses[idx]) {
             obj->resolved.objectClasses[idx] = BAD_POINTER;
-            LOG(Dbg, _T("Cannot resolve objectClass <%#08x> for object <%u>"), obj->imported.objectClassesIds[idx], obj->imported.dn);
+            LOG(Dbg, _T("Cannot resolve objectClass <%#08x> for object <%u>"), obj->resolved.objectClassesIds[idx], obj->imported.dn);
         }
     }
 
@@ -422,6 +518,16 @@ PIMPORTED_SCHEMA GetSchemaByClassid(
     }
 
     return CacheLookupSchemaByClassid(classid);
+}
+
+PIMPORTED_SCHEMA GetSchemaByDisplayName(
+	_In_ LPTSTR displayname
+	) {
+	if (!gs_SchemaCacheActivated) {
+		FATAL(_T("Using schema cache (DisplayName) while it has not been activated (plugin missing requirement?)"));
+	}
+
+	return CacheLookupSchemaByDisplayName(displayname);
 }
 
 LPTSTR GetDomainDn(

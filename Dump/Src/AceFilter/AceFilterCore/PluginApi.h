@@ -190,6 +190,14 @@ typedef struct _PLUGIN_API_TABLE {
             _In_ PIMPORTED_ACE ace
             );
 
+		BOOL(*isObjectTypeClassMatching)(
+			_In_ PIMPORTED_ACE ace
+			);
+
+		BOOL(*isObjectTypeClass)(
+			_In_ PIMPORTED_ACE ace
+			);
+
     } Ace;
 
     struct {
@@ -222,6 +230,10 @@ typedef struct _PLUGIN_API_TABLE {
         PIMPORTED_OBJECT(*ResolverGetAceTrustee)(
         _In_ PIMPORTED_ACE ace
         );
+
+		PDWORD (*ResolverGetObjectClassesIds)(
+			_In_ PIMPORTED_OBJECT obj
+			);
 
         PIMPORTED_OBJECT (*ResolverGetAceObject)(
             _In_ PIMPORTED_ACE ace

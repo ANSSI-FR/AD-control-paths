@@ -30,9 +30,10 @@ static BOOL gs_EmptyObjType = FALSE;
 void PLUGIN_GENERIC_HELP(
     _In_ PLUGIN_API_TABLE const * const api
     ) {
-    API_LOG(Bypass, _T("Keeps ACE with an ObjectType matching the one specified in the <objtype> plugin option"));
-    API_LOG(Bypass, _T("If <objtype> is not specified, keeps Object-ACE with an empty ObjectType"));
-    API_LOG(Bypass, _T("<objtype> must be a GUID, enclosed or not in curly braces"));
+	API_LOG(Bypass, _T("Filters ACE with an ObjectType GUID of a non-matching class"));
+ //   API_LOG(Bypass, _T("Keeps ACE with an ObjectType matching the one specified in the <objtype> plugin option"));
+ //   API_LOG(Bypass, _T("If <objtype> is not specified, keeps Object-ACE with an empty ObjectType"));
+ //   API_LOG(Bypass, _T("<objtype> must be a GUID, enclosed or not in curly braces"));
 }
 
 
@@ -66,9 +67,15 @@ BOOL PLUGIN_FILTER_FILTERACE(
     _In_ PLUGIN_API_TABLE const * const api,
     _Inout_ PIMPORTED_ACE ace
     ) {
-    DWORD flags = 0;
-    GUID * objectType = NULL;
+ //   DWORD flags = 0;
+ //   GUID * objectType = NULL;
 
+	if (api->Ace.isObjectTypeClass(ace))
+		if (!api->Ace.isObjectTypeClassMatching(ace))
+			return FALSE;
+	
+	return TRUE;
+	/*
     if (IS_OBJECT_ACE(ace->imported.raw)) {
         flags = api->Ace.GetObjectFlags(ace);
         if (gs_EmptyObjType) {
@@ -83,4 +90,5 @@ BOOL PLUGIN_FILTER_FILTERACE(
     }
 
     return FALSE;
+	*/
 }

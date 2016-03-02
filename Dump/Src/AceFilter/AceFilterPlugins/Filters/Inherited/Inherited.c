@@ -79,7 +79,11 @@ BOOL PLUGIN_FILTER_FILTERACE(
     _Inout_ PIMPORTED_ACE ace
     ) {
     UNREFERENCED_PARAMETER(api);
-
+	//
+	// Do not check inherited status when ObjectType GUID is present and matches one of the object classes
+	//
+	if (api->Ace.isObjectTypeClassMatching(ace))
+		return TRUE;
     if (gs_InhflagsOpt) {
         return ((ace->imported.raw->AceFlags & gs_MaskFilter) == gs_MaskFilter);
     }

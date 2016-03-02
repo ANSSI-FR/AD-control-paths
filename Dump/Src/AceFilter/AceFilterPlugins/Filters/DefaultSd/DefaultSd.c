@@ -20,6 +20,7 @@ PLUGIN_DECLARE_FILTERACE;
 PLUGIN_DECLARE_REQUIREMENT(PLUGIN_REQUIRE_DN_RESOLUTION);
 PLUGIN_DECLARE_REQUIREMENT(PLUGIN_REQUIRE_CLASSID_RESOLUTION);
 
+
 /* --- DEFINES -------------------------------------------------------------- */
 /* --- TYPES ---------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */

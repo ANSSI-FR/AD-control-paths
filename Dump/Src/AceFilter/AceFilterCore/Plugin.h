@@ -46,9 +46,10 @@
 #define PLUGIN_REQUIRE_DN_RESOLUTION        AceFilterPlugin_gc_ReqDnResolution
 #define PLUGIN_REQUIRE_GUID_RESOLUTION      AceFilterPlugin_gc_ReqGuidResolution
 #define PLUGIN_REQUIRE_CLASSID_RESOLUTION   AceFilterPlugin_gc_ReqClassidResolution
+#define PLUGIN_REQUIRE_DISPLAYNAME_RESOLUTION	AceFilterPlugin_gc_ReqDisplayNameResolution
 #define PLUGIN_REQUIRE_ADMINSDHOLDER_SD     AceFilterPlugin_gc_ReqAdmSdHolderSd
 
-#define PLUGIN_REQ_COUNT                    (5) // must be consistent with the number of values in the PLUGIN_REQUIREMENT enum
+#define PLUGIN_REQ_COUNT                    (6) // must be consistent with the number of values in the PLUGIN_REQUIREMENT enum
 #define PLUGIN_SET_REQUIREMENT(p, req)      SET_BIT(PLUGIN_GENERIC(p)->requirements, req)
 #define PLUGIN_REQUIRES(p, req)             GET_BIT(PLUGIN_GENERIC(p)->requirements, req)
 #define PLUGIN_REQ_STR(x)                   STR(x) // STR cannot be used directly, since it is defined before the PLUGIN_REQUIRE_* macros
@@ -60,6 +61,7 @@ typedef enum _PLUGIN_REQUIREMENT {
     OPT_REQ_DN_RESOLUTION,
     OPT_REQ_GUID_RESOLUTION,
     OPT_REQ_CLASSID_RESOLUTION,
+	OPT_REQ_DISPLAYNAME_RESOLUTION,
     OPT_REQ_ADMINSDHOLDER_SD,
 } PLUGIN_REQUIREMENT;
 // TODO : __COUNTER__ would be nice here, but it's already used in an included header. unless there's a way to reset it ?

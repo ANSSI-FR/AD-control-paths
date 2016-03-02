@@ -46,7 +46,7 @@ Function Usage([string]$errmsg = $null)
     
     Write-Output "- Optional parameters:"
     Write-Output "`t-help                           : show this help"
-    Write-Output "`t-sysvolPath <PASSWORD>          : path of the 'Policies' folder of the sysvol"
+    Write-Output "`t-sysvolPath <PATH>          : path of the 'Policies' folder of the sysvol"
     Write-Output "`t-user <USRNAME> -password <PWD> : username and password to use for explicit authentication"
     Write-Output "`t-logLevel <LVL>                 : log level, possibles values are ALL,DBG,INFO(default),WARN,ERR,SUCC,NONE"
     Write-Output "`t-ldapPort <PORTNUM>             : ldap port to use (default is 389)"
@@ -197,14 +197,14 @@ $optionalParams = (
 if($dumpLdap) {
 
 # Dump
-Execute-Cmd-Wrapper -optionalParams $optionalParams -cmd @"
-.\Bin\LdapDump.exe
-    -x '$logLevel'
-    -f '$outputDir\logs\$filesPrefix.ldpdmp.log'
-    -a '$outputDir\dumps\$filesPrefix.ace.ldpdmp.tsv'
-    -o '$outputDir\dumps\$filesPrefix.obj.ldpdmp.tsv'
-    -c '$outputDir\dumps\$filesPrefix.sch.ldpdmp.tsv'
-    -s '$domainController'
+   Execute-Cmd-Wrapper -optionalParams $optionalParams -cmd @"
+     .\Bin\LdapDump.exe
+   -x '$logLevel'
+   -f '$outputDir\logs\$filesPrefix.ldpdmp.log'
+   -a '$outputDir\dumps\$filesPrefix.ace.ldpdmp.tsv'
+   -o '$outputDir\dumps\$filesPrefix.obj.ldpdmp.tsv'
+   -c '$outputDir\dumps\$filesPrefix.sch.ldpdmp.tsv'
+   -s '$domainController'
 "@
 
 Execute-Cmd-Wrapper -optionalParams $optionalParams -cmd @"
@@ -262,7 +262,7 @@ Execute-Cmd-Wrapper -cmd @"
     --logfile='$outputDir\logs\$filesPrefix.acefilter.ldap.msr.log'
     --importer='LdapDump'
     --writer='MasterSlaveRelation'
-    --filters='Inherited,ControlAd'
+    --filters='Inherited,ObjectType,ControlAd'
     --
     msrout='$outputDir\relations\$filesPrefix.acefilter.ldap.msr.tsv'
     ldpobj='$outputDir\dumps\$filesPrefix.obj.ldpdmp.tsv'
@@ -296,7 +296,7 @@ Execute-Cmd-Wrapper -optionalParams $optionalParams -cmd @"
     --logfile='$outputDir\logs\$filesPrefix.acefilter.sysvol.msr.log'
     --importers='Sysvol,LdapDump'
     --writer='MasterSlaveRelation'
-    --filters='Inherited,ControlFs'
+    --filters='Inherited,ObjectType,ControlFs'
     --
     msrout='$outputDir\relations\$filesPrefix.acefilter.sysvol.msr.tsv'
     ldpobj='$outputDir\dumps\$filesPrefix.obj.ldpdmp.tsv'

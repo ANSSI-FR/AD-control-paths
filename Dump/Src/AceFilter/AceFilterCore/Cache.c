@@ -24,8 +24,10 @@ static RTL_AVL_TABLE gs_AvlTableObjectByDn = { 0 };
 // Schema cache
 static DWORD gs_SchemaByGuidCount = 0;
 static DWORD gs_SchemaByClassidCount = 0;
+static DWORD gs_SchemaByDisplayNameCount = 0;
 static RTL_AVL_TABLE gs_AvlTableSchemaByGuid = { 0 };
 static RTL_AVL_TABLE gs_AvlTableSchemaByClassid = { 0 };
+static RTL_AVL_TABLE gs_AvlTableSchemaByDisplayName = { 0 };
 
 
 /* --- PUBLIC VARIABLES ----------------------------------------------------- */
@@ -120,6 +122,14 @@ static RTL_GENERIC_COMPARE_RESULTS _Function_class_(RTL_AVL_COMPARE_ROUTINE) NTA
     return CompareNums(((PCACHE_SCHEMA_BY_CLASSID)(FirstStruct))->classid, ((PCACHE_SCHEMA_BY_CLASSID)(SecondStruct))->classid);
 }
 
+static RTL_GENERIC_COMPARE_RESULTS _Function_class_(RTL_AVL_COMPARE_ROUTINE) NTAPI AvlCompareSchemaDisplayName(
+	_In_  struct _RTL_AVL_TABLE   *Table,
+	_In_  PVOID                   FirstStruct,
+	_In_  PVOID                   SecondStruct
+	) {
+	UNREFERENCED_PARAMETER(Table);
+	return CompareStr(((PCACHE_SCHEMA_BY_DISPLAYNAME)(FirstStruct))->displayname, ((PCACHE_SCHEMA_BY_DISPLAYNAME)(SecondStruct))->displayname);
+}
 
 /* --- PUBLIC FUNCTIONS ----------------------------------------------------- */
 BOOL CachesInitialize(
@@ -164,6 +174,7 @@ BOOL CachesInitialize(
     RtlInitializeGenericTableAvl(&gs_AvlTableObjectByDn, AvlCompareObjectDn, AvlAllocate, AvlFree, NULL);
     RtlInitializeGenericTableAvl(&gs_AvlTableSchemaByGuid, AvlCompareSchemaGuid, AvlAllocate, AvlFree, NULL);
     RtlInitializeGenericTableAvl(&gs_AvlTableSchemaByClassid, AvlCompareSchemaClassid, AvlAllocate, AvlFree, NULL);
+	RtlInitializeGenericTableAvl(&gs_AvlTableSchemaByDisplayName, AvlCompareSchemaDisplayName, AvlAllocate, AvlFree, NULL);
 
     return TRUE;
 }
@@ -214,6 +225,16 @@ void CachesDestroy(
         }
     }
 
+	AVL_FOREACH(&gs_AvlTableSchemaByDisplayName, PCACHE_SCHEMA_BY_DISPLAYNAME, cacheDisplayName) {
+		impSch = cacheDisplayName->schema;
+		RtlDeleteElementGenericTableAvl(&gs_AvlTableSchemaByDisplayName, cacheDisplayName);
+		IMPORTED_DECREF(impSch);
+		if (IMPORTED_REFCOUNT(impSch) == 0) {
+			FreeCheckX(impSch->imported.dn);
+			HeapFreeCheckX(gs_hHeapCache, 0, impSch);
+		}
+	}
+
     HeapDestroy(gs_hHeapCache);
 }
 
@@ -237,14 +258,21 @@ DWORD CacheSchemaByClassidCount(
     return gs_SchemaByClassidCount;
 }
 
+DWORD CacheSchemaByDisplayNameCount(
+	) {
+	return gs_SchemaByDisplayNameCount;
+}
+
 void CacheInsertObject(
     _In_ PIMPORTED_OBJECT obj
     ) {
     PIMPORTED_OBJECT object = (PIMPORTED_OBJECT)HeapAllocCheckX(gs_hHeapCache, HEAP_ZERO_MEMORY, sizeof(IMPORTED_OBJECT));
     IMPORTED_FIELD_CST_CPY(object, obj, computed.sidLength);
     IMPORTED_FIELD_CST_CPY(object, obj, computed.number);
+	IMPORTED_FIELD_CST_CPY(object, obj, computed.objectClassCount);
     IMPORTED_FIELD_BUF_CPY(object, obj, imported.sid, obj->computed.sidLength);
     IMPORTED_FIELD_DUP_CPY(object, obj, imported.dn);
+	IMPORTED_FIELD_CST_CPY(object, obj, imported.objectClassesNames);
 
     //
     // Cache Object-By-Sid
@@ -313,6 +341,7 @@ void CacheInsertSchema(
     IMPORTED_FIELD_CST_CPY(schema, sch, computed.number);
     IMPORTED_FIELD_BUF_CPY(schema, sch, imported.schemaIDGUID, sizeof(GUID));
     IMPORTED_FIELD_DUP_CPY(schema, sch, imported.dn);
+	IMPORTED_FIELD_DUP_CPY(schema, sch, imported.lDAPDisplayName);
 
     //
     // Cache Schema-By-Guid
@@ -367,6 +396,34 @@ void CacheInsertSchema(
     else {
         LOG(All, _T("Schema entry <%u> does not have a governsID"), schema->computed.number);
     }
+
+	//
+	// Cache Schema-By-DisplayName
+	//
+	if (!GUID_EMPTY(&schema->imported.lDAPDisplayName)) {
+		CACHE_SCHEMA_BY_DISPLAYNAME cacheEntry = { 0 };
+		PCACHE_SCHEMA_BY_DISPLAYNAME inserted = NULL;
+		BOOLEAN newElement = FALSE;
+
+		cacheEntry.displayname = schema->imported.lDAPDisplayName;
+		cacheEntry.schema = schema;
+
+		inserted = (PCACHE_SCHEMA_BY_DISPLAYNAME)RtlInsertElementGenericTableAvl(&gs_AvlTableSchemaByDisplayName, (PVOID)&cacheEntry, sizeof(CACHE_SCHEMA_BY_DISPLAYNAME), &newElement);
+		if (!inserted) {
+			LOG(Err, _T("cannot insert new schema-by-displayname cache entry <%u : %s>"), schema->computed.number, schema->imported.dn);
+		}
+		else if (!newElement) {
+			LOG(Dbg, _T("schema-by-displayname cache entry is not new <%u : %s>"), schema->computed.number, schema->imported.dn);
+		}
+		else {
+			IMPORTED_INCREF(schema);
+			gs_SchemaByDisplayNameCount++;
+		}
+	}
+	else {
+		LOG(All, _T("Schema entry <%u> does not have a DisplayName"), schema->computed.number);
+	}
+
 
     if (IMPORTED_REFCOUNT(schema) == 0) {
         HeapFreeCheckX(gs_hHeapCache, 0, schema);
@@ -441,6 +498,23 @@ PIMPORTED_SCHEMA CacheLookupSchemaByClassid(
     return returned->schema;
 }
 
+
+PIMPORTED_SCHEMA CacheLookupSchemaByDisplayName(
+	_In_ LPTSTR displayname
+	) {
+	CACHE_SCHEMA_BY_DISPLAYNAME searched = { 0 };
+	PCACHE_SCHEMA_BY_DISPLAYNAME returned = NULL;
+
+	searched.displayname = displayname;
+	returned = (PCACHE_SCHEMA_BY_DISPLAYNAME)RtlLookupElementGenericTableAvl(&gs_AvlTableSchemaByDisplayName, (PVOID)&searched);
+
+	if (!returned) {
+		LOG(Dbg, _T("cannot find schema-by-displayname entry for <%s>"), displayname);
+		return NULL;
+	}
+
+	return returned->schema;
+}
 
 LPTSTR CacheGetDomainDn(
     ) {

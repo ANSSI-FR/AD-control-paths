@@ -24,6 +24,7 @@
 #define LDAP_ATTR_SCHEMA_IDGUID     _T("schemaIDGUID")
 #define LDAP_ATTR_GOVERNS_ID        _T("governsID")
 #define LDAP_ATTR_DEFAULT_SD        _T("defaultSecurityDescriptor")
+#define LDAP_ATTR_LDAPDISPLAYNAME	_T("lDAPDisplayName")
 
 #define LDAP_FILTER_SID_FORMAT      _T("(") ## NONE(LDAP_ATTR_OBJECTSID) ## _T("=%s)")
 

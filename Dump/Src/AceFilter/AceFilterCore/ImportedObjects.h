@@ -97,6 +97,7 @@ typedef struct _IMPORTED_SCHEMA {
         GUID schemaIDGUID;
         DWORD governsID;
         LPTSTR defaultSecurityDescriptor;
+		LPTSTR lDAPDisplayName;
     } imported;
 
     struct {
@@ -126,12 +127,13 @@ typedef struct _IMPORTED_OBJECT {
         BYTE sid[SECURITY_MAX_SID_SIZE];
         //BYTE primaryOwner[SECURITY_MAX_SID_SIZE];
         //BYTE primaryGroup[SECURITY_MAX_SID_SIZE];
-        PDWORD objectClassesIds;
         BYTE adminCount;
+		LPTSTR *objectClassesNames;
     } imported;
 
     struct {
         PIMPORTED_SCHEMA * objectClasses;
+		PDWORD objectClassesIds;
         //struct _IMPORTED_OBJECT * primaryOwner;
         //struct _IMPORTED_OBJECT * primaryGroup;
     } resolved;
@@ -219,6 +221,14 @@ BOOL IsInDefaultSd(
     _In_ PIMPORTED_ACE ace
     );
 
+BOOL isObjectTypeClass(
+	_In_ PIMPORTED_ACE ace
+	);
+
+BOOL isObjectTypeClassMatching(
+	_In_ PIMPORTED_ACE ace
+	);
+
 LPTSTR ResolverGetAceTrusteeStr(
     _In_ PIMPORTED_ACE ace
     );
@@ -238,6 +248,10 @@ LPTSTR ResolverGetObjectPrimaryGroupStr(
 PIMPORTED_OBJECT  ResolverGetAceTrustee(
     _In_ PIMPORTED_ACE ace
     );
+
+PDWORD ResolverGetObjectClassesIds(
+	_In_ PIMPORTED_OBJECT obj
+	);
 
 PIMPORTED_OBJECT ResolverGetAceObject(
     _In_ PIMPORTED_ACE ace
@@ -284,6 +298,10 @@ PIMPORTED_SCHEMA GetSchemaByClassid(
     _In_ DWORD classid
     );
 
+PIMPORTED_SCHEMA GetSchemaByDisplayName(
+	_In_ LPTSTR displayname
+	);
+
 LPTSTR GetDomainDn(
     );
 
@@ -314,6 +332,10 @@ extern PIMPORTED_SCHEMA CacheLookupSchemaByGuid(
 extern PIMPORTED_SCHEMA CacheLookupSchemaByClassid(
     _In_ DWORD classid
     );
+
+extern PIMPORTED_SCHEMA CacheLookupSchemaByDisplayName(
+	_In_ LPTSTR displayname
+	);
 
 extern LPTSTR CacheGetDomainDn(
     );

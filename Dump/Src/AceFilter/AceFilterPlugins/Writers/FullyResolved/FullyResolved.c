@@ -26,6 +26,7 @@ PLUGIN_DECLARE_REQUIREMENT(PLUGIN_REQUIRE_DN_RESOLUTION);
 PLUGIN_DECLARE_REQUIREMENT(PLUGIN_REQUIRE_SID_RESOLUTION);
 PLUGIN_DECLARE_REQUIREMENT(PLUGIN_REQUIRE_CLASSID_RESOLUTION);
 PLUGIN_DECLARE_REQUIREMENT(PLUGIN_REQUIRE_GUID_RESOLUTION);
+PLUGIN_DECLARE_REQUIREMENT(PLUGIN_REQUIRE_DISPLAYNAME_RESOLUTION);
 PLUGIN_DECLARE_REQUIREMENT(PLUGIN_REQUIRE_ADMINSDHOLDER_SD);
 
 
@@ -274,11 +275,11 @@ BOOL PLUGIN_WRITER_WRITEACE(
         int ret = 0, written = 0;
         LPTSTR classIds = ApiLocalAllocCheckX(size);
 
-        ret = _sntprintf_s(classIds, size, size - 1, _T("%08x"), obj->imported.objectClassesIds[0]);
+        ret = _sntprintf_s(classIds, size, size - 1, _T("%08x"), obj->resolved.objectClassesIds[0]);
         if (ret != -1) {
             written = ret;
             for (i = 1; i < obj->computed.objectClassCount; i++) {
-                ret = _sntprintf_s(classIds + written, size - written, size - written - 1, _T(",%08x"), obj->imported.objectClassesIds[i]);
+                ret = _sntprintf_s(classIds + written, size - written, size - written - 1, _T(",%08x"), obj->resolved.objectClassesIds[i]);
                 if (ret == -1) {
                     break;
                 }
