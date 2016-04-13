@@ -28,6 +28,11 @@ This repository contains tools that can be used to generate such graphs.
 - **Dump** tools run on Windows (tested on Windows 7 and later).
 - **Import**, **Query** and **Visualize** tools should run on anything supporting Neo4j, Java and Ruby, but have mostly been tested on Linux.
 
+
+### Building steps (Visual Studio)
+
+- Build .sln files in the 3 subfolders of /Dump/Src/. 
+
 ### Installation steps (tested on Ubuntu 14.04 and Debian 8):
 
 0. Install Java:
