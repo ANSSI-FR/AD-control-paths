@@ -18,6 +18,8 @@ PLUGIN_DECLARE_HELP;
 PLUGIN_DECLARE_INITIALIZE;
 PLUGIN_DECLARE_FILTERACE;
 
+PLUGIN_DECLARE_REQUIREMENT(PLUGIN_REQUIRE_GUID_RESOLUTION);
+
 /* --- DEFINES -------------------------------------------------------------- */
 /* --- TYPES ---------------------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */

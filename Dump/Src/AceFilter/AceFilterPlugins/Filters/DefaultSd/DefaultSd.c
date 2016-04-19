@@ -30,7 +30,7 @@ PLUGIN_DECLARE_REQUIREMENT(PLUGIN_REQUIRE_CLASSID_RESOLUTION);
 void PLUGIN_GENERIC_HELP(
     _In_ PLUGIN_API_TABLE const * const api
     ) {
-    API_LOG(Bypass, _T("Filters out ACE comming from the default SD of one of the classes of the object on which the ACE applies"));
+    API_LOG(Bypass, _T("Filters out ACE coming from the default SD of one of the classes of the object on which the ACE applies"));
     API_LOG(Bypass, _T("This requires a conversion from SDDL, which is likely to fail on an outside-domain machine."));
     API_LOG(Bypass, _T("This filter does not use any plugin options"));
 }
