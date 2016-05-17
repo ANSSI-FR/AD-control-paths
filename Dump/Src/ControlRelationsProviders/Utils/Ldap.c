@@ -328,6 +328,7 @@ BOOL LdapPagedSearch(
                 : (PLDAP_RETRIEVED_DATA *)HeapAlloc(hLdapHeap, HEAP_ZERO_MEMORY, sizeof(PLDAP_RETRIEVED_DATA)* (dwPageEntries));
 
             if (!pRetrievedAllData) {
+				LOG(Err, _T("Unable to allocate pRetrievedAllData memory"));
                 return FALSE;
             }
 
@@ -700,7 +701,7 @@ BOOL ConstructRangeAtt(
     // Verify that enough space was passed in.
     tOutbuff = (PTCHAR)HeapAlloc(hLdapHeap, HEAP_ZERO_MEMORY, (requiredlen + 1) * sizeof(TCHAR));
     if (!tOutbuff) {
-        FATAL(_T("Unable to allocate raneg attribute"));
+        FATAL(_T("Unable to allocate range attribute"));
     }
     _sntprintf_s(tOutbuff, (requiredlen + 1), requiredlen, TEXT("%s;range=%s-%s"), tAtttype, startstring, endstring);
     tOutbuff[requiredlen] = '\0';
@@ -767,7 +768,7 @@ BOOL ExtractDomainNamingContext(
     dwStrSize = (DWORD)_tcslen(*pNamingContextTmp);
     pLDAPConnectInfo->ptLDAPDomainDN = (PTCHAR)HeapAlloc(hLdapHeap, HEAP_ZERO_MEMORY, (dwStrSize + 1) * sizeof(TCHAR));
     if (!pLDAPConnectInfo->ptLDAPDomainDN) {
-        LOG(Warn, _T("Unable to allocate ptLDAPDomainDN structure"));
+        LOG(Err, _T("Unable to allocate ptLDAPDomainDN structure"));
         return FALSE;
     }
 

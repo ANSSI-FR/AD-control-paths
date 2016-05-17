@@ -8,7 +8,7 @@
 /* --- PLUGIN DECLARATIONS -------------------------------------------------- */
 #define PLUGIN_NAME         _T("Inherited")
 #define PLUGIN_KEYWORD      _T("INH")
-#define PLUGIN_DESCRIPTION  _T("Filters inherited ACE (remove them by default)");
+#define PLUGIN_DESCRIPTION  _T("Filters inherited ACE (remove them except when ObjectType matches)");
 
 PLUGIN_DECLARE_NAME;
 PLUGIN_DECLARE_KEYWORD;
@@ -37,7 +37,7 @@ void PLUGIN_GENERIC_HELP(
 
     DWORD i = 0;
 
-    API_LOG(Bypass, _T("By default, filters out ACE for whom the 'INHERITED_ACE' flag is present"));
+    API_LOG(Bypass, _T("Filters out ACE for whom the 'INHERITED_ACE' flag is present except when ObjectType matches."));
     API_LOG(Bypass, _T("If the <inhflags> plugin option is set, keeps ACE with an AceFlags containing at least the specified flags"));
     API_LOG(Bypass, _T("Valid flags which can be specified (comma separated) are : "));
     for (i = 0; i < ARRAY_COUNT(gc_AceFlagsValues); i++) {
@@ -82,7 +82,8 @@ BOOL PLUGIN_FILTER_FILTERACE(
     ) {
     UNREFERENCED_PARAMETER(api);
 	//
-	// Do not check inherited status when ObjectType GUID is present and matches one of the object classes
+	// Do not check inherited status when ObjectType GUID is present and matches one of the object classes,
+	// as it can lead to a situation where control is not given on parent object but is given on child.
 	//
 	if (api->Ace.isObjectTypeClassMatching(ace))
 		return TRUE;

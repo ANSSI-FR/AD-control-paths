@@ -67,6 +67,7 @@ BOOL SysvolFormatSubGpoElementName(
         size_t len = 3 + _tcslen(ptSubElement) + 1 + _tcslen(ptParentDn) + 1;
         *ptSubDn = malloc(len*sizeof(TCHAR));
         if (!*ptSubDn) {
+			LOG(Err, _T("Unable to allocate ptSubDn structure"));
             return FALSE;
         }
         size = _stprintf_s(*ptSubDn, len, _T("CN=%s,%s"), ptSubElement, ptParentDn);

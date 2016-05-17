@@ -69,28 +69,9 @@ BOOL PLUGIN_FILTER_FILTERACE(
     _In_ PLUGIN_API_TABLE const * const api,
     _Inout_ PIMPORTED_ACE ace
     ) {
- //   DWORD flags = 0;
- //   GUID * objectType = NULL;
-
 	if (api->Ace.isObjectTypeClass(ace))
 		if (!api->Ace.isObjectTypeClassMatching(ace))
 			return FALSE;
 	
 	return TRUE;
-	/*
-    if (IS_OBJECT_ACE(ace->imported.raw)) {
-        flags = api->Ace.GetObjectFlags(ace);
-        if (gs_EmptyObjType) {
-            return ((flags & ACE_OBJECT_TYPE_PRESENT) == 0);
-        }
-        else {
-            if (flags & ACE_OBJECT_TYPE_PRESENT) {
-                objectType = api->Ace.GetObjectTypeAce(ace);
-                return GUID_EQ(objectType, &gs_ObjectTypeFilter);
-            }
-        }
-    }
-
-    return FALSE;
-	*/
 }
