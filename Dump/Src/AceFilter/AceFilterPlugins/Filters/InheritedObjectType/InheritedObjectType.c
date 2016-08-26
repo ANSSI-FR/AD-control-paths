@@ -39,7 +39,7 @@ void PLUGIN_GENERIC_HELP(
 BOOL PLUGIN_GENERIC_INITIALIZE(
     _In_ PLUGIN_API_TABLE const * const api
     ) {
-    HRESULT hr = NOERROR;
+    BOOL bResult = FALSE;
     LPTSTR inhobjty = api->Common.GetPluginOption(_T("inhobjtype"), FALSE);
     // TODO : guid resolution from resolved str form could be nice here
 
@@ -48,10 +48,10 @@ BOOL PLUGIN_GENERIC_INITIALIZE(
         gs_EmptyInhObjType = TRUE;
     }
     else {
-        hr = api->Common.ConvertStrGuidToGuid(inhobjty, &gs_InhObjectTypeFilter);
+		bResult = api->Common.ConvertStrGuidToGuid(inhobjty, &gs_InhObjectTypeFilter);
         gs_EmptyInhObjType = FALSE;
-        if (hr != NOERROR) {
-            API_FATAL(_T("Error while converting inherited object type guid <%s> to its binary form : <%#08x)"), inhobjty, hr);
+        if (bResult != NOERROR) {
+            API_FATAL(_T("Error while converting inherited object type guid <%s> to its binary form : <%#08x)"), inhobjty, bResult);
         }
         else {
             API_LOG(Info, _T("Filtering inheritedObjectType <%s>"), inhobjty);

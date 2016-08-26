@@ -1,11 +1,9 @@
 /* --- INCLUDES ------------------------------------------------------------- */
-#include "..\Utils\Utils.h"
 #include "..\Utils\Control.h"
-#include "..\Utils\Ldap.h"
 
 
 /* --- DEFINES -------------------------------------------------------------- */
-#define CONTROL_MEMBER_DEFAULT_OUTFILE  _T("control.ad.groupmember.tsv")
+#define CONTROL_MEMBER_DEFAULT_OUTFILE  _T("control.ad.groupmember.csv")
 #define CONTROL_MEMBER_KEYWORD          _T("GROUP_MEMBER")
 #define LDAP_FILTER_MEMBER              _T("(") ## NONE(LDAP_ATTR_MEMBER) ## _T("=*)")
 
@@ -14,26 +12,40 @@
 /* --- PUBLIC VARIABLES ----------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 static void CallbackGroupMember(
-    _In_ HANDLE hOutfile,
-    _Inout_ PLDAP_RETRIEVED_DATA pLdapRetreivedData
-    ) {
-    BOOL bResult = FALSE;
-    for (DWORD i = 0; i < pLdapRetreivedData->dwElementCount; i++) {
-        LOG(Dbg, SUB_LOG(_T("- %u: %s")), i, (LPTSTR)pLdapRetreivedData->ppbData[i]);
-        bResult = ControlWriteOutline(hOutfile, (LPTSTR)pLdapRetreivedData->ppbData[i], pLdapRetreivedData->tDN, CONTROL_MEMBER_KEYWORD);
-        if (!bResult) {
-            LOG(Err, _T("Cannot write outline for <%s>"), pLdapRetreivedData->tDN);
-            return;
-        }
-    }
+	_In_ CSV_HANDLE hOutfile,
+	_Inout_ LPTSTR *tokens
+) {
+	BOOL bResult = FALSE;
+	LPTSTR pMember = NULL;
+	LPTSTR next = NULL;
+	LPTSTR listMember = NULL;
+
+	if (STR_EMPTY(tokens[LdpListMember]))
+		return;
+
+		listMember = _tcsdup(tokens[LdpListMember]);
+		pMember = _tcstok_s(listMember, _T(";"), &next);
+		while (pMember) {
+			bResult = ControlWriteOutline(hOutfile, pMember, tokens[LdpListDn], CONTROL_MEMBER_KEYWORD);
+			if (!bResult) {
+				LOG(Err, _T("Cannot write outline for <%s>"), tokens[LdpListDn]);
+			}
+			pMember = _tcstok_s(NULL, _T(";"), &next);
+		}
+		free(listMember);
 }
 
 
+
+
+
+
 /* --- PUBLIC FUNCTIONS ----------------------------------------------------- */
-int main(
-    _In_ int argc,
-    _In_ TCHAR * argv[]
-    ) {
-    ControlMainForeachLdapResult(argc, argv, CONTROL_MEMBER_DEFAULT_OUTFILE, LDAP_FILTER_MEMBER, LDAP_ATTR_MEMBER, NULL, CallbackGroupMember, GenericUsage);
-    return EXIT_SUCCESS;
+int _tmain(
+	_In_ int argc,
+	_In_ TCHAR * argv[]
+) {
+	PTCHAR outfileHeader[OUTFILE_TOKEN_COUNT] = CONTROL_OUTFILE_HEADER;
+	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackGroupMember, GenericUsage);
+	return EXIT_SUCCESS;
 }

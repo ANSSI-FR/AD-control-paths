@@ -18,6 +18,8 @@ Param(
     
     [switch]$ldapOnly = $false,
     [switch]$sysvolOnly = $false,
+	
+	[switch]$fromExistingDumps = $false,
     
     [switch]$help = $false,
     [switch]$generateCmdOnly = $false
@@ -27,6 +29,7 @@ $globalTimer = $null
 $globalLogFile = $null
 $dumpLdap = $ldapOnly.IsPresent -or (!$ldapOnly.IsPresent -and !$sysvolOnly.IsPresent)
 $dumpSysvol = $sysvolOnly.IsPresent -or (!$ldapOnly.IsPresent -and !$sysvolOnly.IsPresent)
+$date =  date -Format yyyyMMdd
 
 #
 # Verifying script options
@@ -43,17 +46,19 @@ Function Usage([string]$errmsg = $null)
     Write-Output "`t-outputDir <DIR>                : output directory"
     Write-Output "`t-filesPrefix <PREFIX>           : arbitrary prefix"
     Write-Output "`t-domainController <DC>          : ip/host of the DC to query"
+    Write-Output "`t-domainDnsName <DNSNAME>        : dns name of the domain (ex: mydomain.local)"
     
     Write-Output "- Optional parameters:"
     Write-Output "`t-help                           : show this help"
-    Write-Output "`t-sysvolPath <PATH>          : path of the 'Policies' folder of the sysvol"
+    Write-Output "`t-sysvolPath <PATH>              : path of the 'Policies' folder of the sysvol"
     Write-Output "`t-user <USRNAME> -password <PWD> : username and password to use for explicit authentication"
     Write-Output "`t-logLevel <LVL>                 : log level, possibles values are ALL,DBG,INFO(default),WARN,ERR,SUCC,NONE"
     Write-Output "`t-ldapPort <PORTNUM>             : ldap port to use (default is 389)"
-    Write-Output "`t-domainDnsName <DNSNAME>        : dns name of the domain (ex: mydomain.local)"
+    
     Write-Output "`t-useBackupPriv                  : use backup privilege to access -sysvolPath"
     Write-Output "`t-ldapOnly                       : only dump data from the LDAP directory"
     Write-Output "`t-sysvolOnly                     : only dump data from the sysvol"
+	Write-Output "`t-fromExistingDumps              : use previous directorycrawler dump files in target folder"
     Write-Output "`t-generateCmdOnly                : generate a list of commands to dump data, instead of executing them"
 
     Break
@@ -70,6 +75,9 @@ if(!$filesPrefix) {
 }
 if(!$domainController) {
     Usage "-domainController parameter is required."
+}
+if(!$domainDnsName) {
+    Usage "-domainDnsName parameter is required."
 }
 if([bool]$user -bXor [bool]$password) {
     Usage "-user and -password must both be specified to use explicit authentication"
@@ -147,11 +155,13 @@ Function Execute-Cmd-Wrapper([string]$cmd, [array]$optionalParams, [bool]$maxRet
 #     |- dumps
 #     \- relations
 #
+$outputDirParent = $outputDir
+$outputDir += "\$date`_$domainDnsName"
 $directories = (
     "$outputDir",
-    "$outputDir\dumps",
-    "$outputDir\logs",
-    "$outputDir\relations"
+	"$outputDir\Ldap",
+    "$outputDir\Logs",
+    "$outputDir\Relations"
 )
 if (!$generateCmdOnly) {
     Foreach($dir in $directories) {
@@ -182,7 +192,9 @@ if($ldapOnly.IsPresent) {
 } else {
     Write-Output-And-Global-Log "[+] Dumping LDAP and SYSVOL data`n"
 }
-
+if($fromExistingDumps.IsPresent) {
+    Write-Output-And-Global-Log "[+] Working from existing dump files`n"
+}
 
 
 # 
@@ -194,64 +206,73 @@ $optionalParams = (
     ($domainDnsName,    "-d '$domainDnsName'")
 )
 
-if($dumpLdap) {
+if($dumpLdap -and !$fromExistingDumps.IsPresent) {
 
 # Dump
    Execute-Cmd-Wrapper -optionalParams $optionalParams -cmd @"
-     .\Bin\LdapDump.exe
-   -x '$logLevel'
-   -f '$outputDir\logs\$filesPrefix.ldpdmp.log'
-   -a '$outputDir\dumps\$filesPrefix.ace.ldpdmp.tsv'
-   -o '$outputDir\dumps\$filesPrefix.obj.ldpdmp.tsv'
-   -c '$outputDir\dumps\$filesPrefix.sch.ldpdmp.tsv'
+     .\Bin\directorycrawler.exe
+   -w '$logLevel'
+   -f '$outputDirParent\Logs\$filesPrefix.dircrwl.log'
+   -j '.\Bin\ADng_ADCP.json'
+   -o '$outputDirParent'
    -s '$domainController'
 "@
+}
 
-Execute-Cmd-Wrapper -optionalParams $optionalParams -cmd @"
+if($dumpLdap) {
+
+Execute-Cmd-Wrapper -cmd @"
 .\Bin\Control.Ad.Container.exe
     -D '$logLevel'
-    -L '$outputDir\logs\$filesPrefix.control.ad.container.log'
-    -O '$outputDir\relations\$filesPrefix.control.ad.container.tsv'
+    -L '$outputDir\Logs\$filesPrefix.control.ad.container.log'
+    -I '$outputDir\Ldap\$($domainDnsName.Substring(0,2).ToUpper())_LDAP_obj.csv'
+    -O '$outputDir\Relations\$filesPrefix.control.ad.container.csv'
     -s '$domainController'
 "@
 
-Execute-Cmd-Wrapper -optionalParams $optionalParams -cmd @"
+Execute-Cmd-Wrapper -cmd @"
 .\Bin\Control.Ad.Gplink.exe
     -D '$logLevel'
-    -L '$outputDir\logs\$filesPrefix.control.ad.gplink.log'
-    -O '$outputDir\relations\$filesPrefix.control.ad.gplink.tsv'
+    -L '$outputDir\Logs\$filesPrefix.control.ad.gplink.log'
+	-I '$outputDir\Ldap\$($domainDnsName.Substring(0,2).ToUpper())_LDAP_obj.csv'
+    -O '$outputDir\Relations\$filesPrefix.control.ad.gplink.csv'
     -s '$domainController'
 "@
 
-Execute-Cmd-Wrapper -optionalParams $optionalParams -cmd @"
+Execute-Cmd-Wrapper -cmd @"
 .\Bin\Control.Ad.Group.exe
     -D '$logLevel'
-    -L '$outputDir\logs\$filesPrefix.control.ad.group.log'
-    -O '$outputDir\relations\$filesPrefix.control.ad.group.tsv'
+    -L '$outputDir\Logs\$filesPrefix.control.ad.group.log'
+    -I '$outputDir\Ldap\$($domainDnsName.Substring(0,2).ToUpper())_LDAP_obj.csv'
+    -O '$outputDir\Relations\$filesPrefix.control.ad.group.csv'
     -s '$domainController'
 "@
 
-Execute-Cmd-Wrapper -optionalParams $optionalParams -cmd @"
+Execute-Cmd-Wrapper -cmd @"
 .\Bin\Control.Ad.Sd.exe
     -D '$logLevel'
     -L '$outputDir\logs\$filesPrefix.control.ad.sd.log'
-    -O '$outputDir\relations\$filesPrefix.control.ad.sd.tsv'
+	-I '$outputDir\Ldap\$($domainDnsName.Substring(0,2).ToUpper())_LDAP_obj.csv'
+	-A '$outputDir\Ldap\$($domainDnsName.Substring(0,2).ToUpper())_LDAP_ace.csv'
+    -O '$outputDir\Relations\$filesPrefix.control.ad.sd.csv'
     -s '$domainController'
 "@
 
-Execute-Cmd-Wrapper -optionalParams $optionalParams -cmd @"
+Execute-Cmd-Wrapper -cmd @"
 .\Bin\Control.Ad.PrimaryGroup.exe
     -D '$logLevel'
-    -L '$outputDir\logs\$filesPrefix.control.ad.primarygroup.log'
-    -O '$outputDir\relations\$filesPrefix.control.ad.primarygroup.tsv'
+    -L '$outputDir\Logs\$filesPrefix.control.ad.primarygroup.log'
+	-I '$outputDir\Ldap\$($domainDnsName.Substring(0,2).ToUpper())_LDAP_obj.csv'
+    -O '$outputDir\Relations\$filesPrefix.control.ad.primarygroup.csv'
     -s '$domainController'
 "@
 
-Execute-Cmd-Wrapper -optionalParams $optionalParams -cmd @"
+Execute-Cmd-Wrapper -cmd @"
 .\Bin\Control.Ad.SidHistory.exe
     -D '$logLevel'
-    -L '$outputDir\logs\$filesPrefix.control.ad.sidhistory.log'
-    -O '$outputDir\relations\$filesPrefix.control.ad.sidhistory.tsv'
+    -L '$outputDir\Logs\$filesPrefix.control.ad.sidhistory.log'
+	-I '$outputDir\Ldap\$($domainDnsName.Substring(0,2).ToUpper())_LDAP_obj.csv'
+    -O '$outputDir\Relations\$filesPrefix.control.ad.sidhistory.csv'
     -s '$domainController'
 "@
 
@@ -259,15 +280,15 @@ Execute-Cmd-Wrapper -optionalParams $optionalParams -cmd @"
 Execute-Cmd-Wrapper -cmd @"
 .\Bin\AceFilter.exe
     --loglvl='$logLevel'
-    --logfile='$outputDir\logs\$filesPrefix.acefilter.ldap.msr.log'
+    --logfile='$outputDir\Logs\$filesPrefix.acefilter.ldap.msr.log'
     --importer='LdapDump'
     --writer='MasterSlaveRelation'
     --filters='Inherited,ObjectType,ControlAd'
     --
-    msrout='$outputDir\relations\$filesPrefix.acefilter.ldap.msr.tsv'
-    ldpobj='$outputDir\dumps\$filesPrefix.obj.ldpdmp.tsv'
-    ldpsch='$outputDir\dumps\$filesPrefix.sch.ldpdmp.tsv'
-    ldpace='$outputDir\dumps\$filesPrefix.ace.ldpdmp.tsv'
+    msrout='$outputDir\Relations\$filesPrefix.acefilter.ldap.msr.csv'
+    ldpobj='$outputDir\Ldap\$($domainDnsName.Substring(0,2).ToUpper())_LDAP_obj.csv'
+    ldpsch='$outputDir\Ldap\$($domainDnsName.Substring(0,2).ToUpper())_LDAP_sch.csv'
+    ldpace='$outputDir\Ldap\$($domainDnsName.Substring(0,2).ToUpper())_LDAP_ace.csv'
 "@
 
 }
@@ -277,34 +298,49 @@ Execute-Cmd-Wrapper -cmd @"
 # 
 if($dumpSysvol) {
 
-# Dump
+# GPO Owners
 $optionalParams += , ($useBackupPriv, "-B")
-Execute-Cmd-Wrapper -optionalParams $optionalParams -cmd @"
+Execute-Cmd-Wrapper -cmd @"
 .\Bin\Control.Sysvol.Sd.exe
     -D '$logLevel'
-    -L '$outputDir\logs\$filesPrefix.control.sysvol.sd.log'
-    -O '$outputDir\relations\$filesPrefix.control.sysvol.sd.tsv'
+    -L '$outputDir\Logs\$filesPrefix.control.sysvol.sd.log'
+	-I '$outputDir\Ldap\$($domainDnsName.Substring(0,2).ToUpper())_LDAP_obj.csv'
+    -O '$outputDir\Relations\$filesPrefix.control.sysvol.sd.csv'
     -s '$domainController'
     -S '$sysvolPath'
 "@
 
-# Filter
+# GPO files ACE filtering
 $optionalParams = (,($useBackupPriv, "usebackpriv=1"))
-Execute-Cmd-Wrapper -optionalParams $optionalParams -cmd @"
+Execute-Cmd-Wrapper -cmd @"
 .\Bin\AceFilter.exe
     --loglvl='$logLevel'
     --logfile='$outputDir\logs\$filesPrefix.acefilter.sysvol.msr.log'
     --importers='Sysvol,LdapDump'
     --writer='MasterSlaveRelation'
-    --filters='Inherited,ObjectType,ControlFs'
+    --filters='Inherited,ControlFs'
     --
-    msrout='$outputDir\relations\$filesPrefix.acefilter.sysvol.msr.tsv'
-    ldpobj='$outputDir\dumps\$filesPrefix.obj.ldpdmp.tsv'
-    ldpsch='$outputDir\dumps\$filesPrefix.sch.ldpdmp.tsv'
+    msrout='$outputDir\Relations\$filesPrefix.acefilter.sysvol.msr.csv'
+    ldpobj='$outputDir\Ldap\$($domainDnsName.Substring(0,2).ToUpper())_LDAP_obj.csv'
+    ldpsch='$outputDir\Ldap\$($domainDnsName.Substring(0,2).ToUpper())_LDAP_sch.csv'
     sysvol='$sysvolPath'
 "@
 
 }
+
+#
+# Make all nodes from LDAP and relations
+#
+Execute-Cmd-Wrapper -cmd @"
+.\Bin\Control.MakeAllNodes.exe
+    -D '$logLevel'
+    -L '$outputDir\Logs\$filesPrefix.convert.ad.lowercase.log'
+    -I '$outputDir\Ldap\$($domainDnsName.Substring(0,2).ToUpper())_LDAP_obj.csv'
+	-A '$((dir $outputDir\Relations\*.csv -exclude *.deny.csv) -join ',')'
+    -O '$outputDir\Ldap\all_nodes.csv'
+    -s '$domainController'
+"@
+
 
 # 
 # End

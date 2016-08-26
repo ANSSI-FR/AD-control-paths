@@ -32,6 +32,9 @@
 #define PLUGIN_IMPORTER_GETNEXTACE          AceFilterPlugin_Importer_fn_GetNextAce
 #define PLUGIN_IMPORTER_GETNEXTOBJ          AceFilterPlugin_Importer_fn_GetNextObject
 #define PLUGIN_IMPORTER_GETNEXTSCH          AceFilterPlugin_Importer_fn_GetNextSchema
+#define PLUGIN_IMPORTER_FREEACE             AceFilterPlugin_Importer_fn_FreeAce
+#define PLUGIN_IMPORTER_FREEOBJECT          AceFilterPlugin_Importer_fn_FreeObject
+#define PLUGIN_IMPORTER_FREESCHEMA          AceFilterPlugin_Importer_fn_FreeSchema
 #define PLUGIN_IMPORTER_RESETREADING        AceFilterPlugin_Importer_fn_ResetReading
 #define PLUGIN_FILTER_FILTERACE             AceFilterPlugin_Filter_fn_FilterAce
 #define PLUGIN_WRITER_WRITEACE              AceFilterPlugin_Writer_fn_WriteAce
@@ -45,13 +48,12 @@
 #define PLUGIN_REQUIRE_SID_RESOLUTION       AceFilterPlugin_gc_ReqSidResolution
 #define PLUGIN_REQUIRE_DN_RESOLUTION        AceFilterPlugin_gc_ReqDnResolution
 #define PLUGIN_REQUIRE_GUID_RESOLUTION      AceFilterPlugin_gc_ReqGuidResolution
-#define PLUGIN_REQUIRE_CLASSID_RESOLUTION   AceFilterPlugin_gc_ReqClassidResolution
 #define PLUGIN_REQUIRE_DISPLAYNAME_RESOLUTION	AceFilterPlugin_gc_ReqDisplayNameResolution
 #define PLUGIN_REQUIRE_ADMINSDHOLDER_SD     AceFilterPlugin_gc_ReqAdmSdHolderSd
 
-#define PLUGIN_REQ_COUNT                    (6) // must be consistent with the number of values in the PLUGIN_REQUIREMENT enum
-#define PLUGIN_SET_REQUIREMENT(p, req)      SET_BIT(PLUGIN_GENERIC(p)->requirements, req)
-#define PLUGIN_REQUIRES(p, req)             GET_BIT(PLUGIN_GENERIC(p)->requirements, req)
+#define PLUGIN_REQ_COUNT                    (5) // must be consistent with the number of values in the PLUGIN_REQUIREMENT enum
+#define PLUGIN_SET_REQUIREMENT(p, req)      BITMAP_SET_BIT(PLUGIN_GENERIC(p)->requirements, req)
+#define PLUGIN_REQUIRES(p, req)             BITMAP_GET_BIT(PLUGIN_GENERIC(p)->requirements, req)
 #define PLUGIN_REQ_STR(x)                   STR(x) // STR cannot be used directly, since it is defined before the PLUGIN_REQUIRE_* macros
 
 
@@ -60,7 +62,6 @@ typedef enum _PLUGIN_REQUIREMENT {
     OPT_REQ_SID_RESOLUTION,
     OPT_REQ_DN_RESOLUTION,
     OPT_REQ_GUID_RESOLUTION,
-    OPT_REQ_CLASSID_RESOLUTION,
 	OPT_REQ_DISPLAYNAME_RESOLUTION,
     OPT_REQ_ADMINSDHOLDER_SD,
 } PLUGIN_REQUIREMENT;
@@ -98,6 +99,19 @@ typedef void PLUGIN_FN_RESETREADING(
 typedef void PLUGIN_FN_SIMPLE(
     _In_ PLUGIN_API_TABLE const * const table
     );
+typedef void PLUGIN_FN_FREEACE(
+	_In_ PLUGIN_API_TABLE const * const api,
+	_Inout_ PIMPORTED_ACE ace
+    );
+typedef void PLUGIN_FN_FREEOBJECT(
+	_In_ PLUGIN_API_TABLE const * const api,
+	_Inout_ PIMPORTED_OBJECT obj
+    );
+typedef void PLUGIN_FN_FREESCHEMA(
+	_In_ PLUGIN_API_TABLE const * const api,
+	_Inout_ PIMPORTED_SCHEMA sch
+    );
+
 
 typedef PLUGIN_FN_INITIALIZE *PLUGIN_PFN_INITIALIZE;
 typedef PLUGIN_FN_FINALIZE *PLUGIN_PFN_FINALIZE;
@@ -106,6 +120,9 @@ typedef PLUGIN_FN_PROCESSSCHEMA *PLUGIN_PFN_PROCESSSCHEMA;
 typedef PLUGIN_FN_PROCESSOBJECT *PLUGIN_PFN_PROCESSOBJECT;
 typedef PLUGIN_FN_RESETREADING *PLUGIN_PFN_RESETREADING;
 typedef PLUGIN_FN_SIMPLE *PLUGIN_PFN_SIMPLE;
+typedef PLUGIN_FN_FREEACE *PLUGIN_PFN_FREEACE;
+typedef PLUGIN_FN_FREEOBJECT *PLUGIN_PFN_FREEOBJECT;
+typedef PLUGIN_FN_FREESCHEMA *PLUGIN_PFN_FREESCHEMA;
 
 
 typedef struct _PLUGIN_TYPE {
@@ -143,6 +160,9 @@ typedef struct _IMPORTER_FUNCTIONS {
     PLUGIN_PFN_PROCESSSCHEMA GetNextSchema;
     PLUGIN_PFN_PROCESSOBJECT GetNextObject;
     PLUGIN_PFN_RESETREADING ResetReading;
+	PLUGIN_PFN_FREEACE FreeAce;
+	PLUGIN_PFN_FREEOBJECT FreeObject;
+	PLUGIN_PFN_FREESCHEMA FreeSchema;
 } IMPORTER_FUNCTIONS, *PIMPORTER_FUNCTIONS;
 
 typedef struct _FILTER_FUNCTIONS {

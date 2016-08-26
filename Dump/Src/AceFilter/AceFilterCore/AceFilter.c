@@ -19,7 +19,7 @@ static void Usage(
 
     LOG(Succ, _T("Showing help :"));
     LOG(Bypass, EMPTY_STR);
-    LOG(Bypass, SEPARATOR_STR);
+    LOG(Bypass, SEPARATOR_LINE);
     LOG(Bypass, _T("> General information :"));
     LOG(Bypass, _T("  This tool's purpose is to generate lists of filtered ACE. For this, it uses different kinds of 'plugins' :"));
     LOG(Bypass, _T("   - importers : used to import ACE and active directory data (object list and schema)"));
@@ -28,7 +28,7 @@ static void Usage(
     LOG(Bypass, _T("  You will use these plugins according to the tool used to dump AD data,"));
     LOG(Bypass, _T("  and the tool for which you want to generate filtered lists of ACE."));
     LOG(Bypass, EMPTY_STR);
-    LOG(Bypass, SEPARATOR_STR);
+    LOG(Bypass, SEPARATOR_LINE);
     LOG(Bypass, _T("> Syntax :"));
     LOG(Bypass, _T("  %s [<--tool-options>=<value>]+ -- [<plugin-options>=<value>]+"), progName);
     LOG(Bypass, _T("  This tool uses 2 types of options : "));
@@ -36,13 +36,13 @@ static void Usage(
     LOG(Bypass, _T("   - plugin-options : described in the help of each plugin, in the format <name>=<value>."));
     LOG(Bypass, _T("  Plugins-options must be specified after all tool-options"));
     LOG(Bypass, EMPTY_STR);
-    LOG(Bypass, SEPARATOR_STR);
+    LOG(Bypass, SEPARATOR_LINE);
     LOG(Bypass, _T("> Help options :"));
     LOG(Bypass, _T("  --help/usage : Shows this help, and the help of each loaded plugins"));
     LOG(Bypass, _T("  --list-plugins : List all plugins (Importers, Filters and Writers)"));
     LOG(Bypass, _T("  --list-(importers|filters|writers) : List plugins of the corresponding category"));
     LOG(Bypass, EMPTY_STR);
-    LOG(Bypass, SEPARATOR_STR);
+    LOG(Bypass, SEPARATOR_LINE);
     LOG(Bypass, _T("> Plugins options :"));
     LOG(Bypass, _T("  All these options take a comma-separated list of plugins as value"));
     LOG(Bypass, _T("  --importers : list of plugins in charge of loading AD data (e.g. ACE, Object list, and Schema)"));
@@ -55,13 +55,13 @@ static void Usage(
     LOG(Bypass, _T("  --invert-filters : list of filters to invert (previously kept ACE are now filtered for those plugins)"));
     LOG(Bypass, _T("    The concerned plugins must be loaded, so this option must always be specified after the --filters option"));
     LOG(Bypass, EMPTY_STR);
-    LOG(Bypass, SEPARATOR_STR);
+    LOG(Bypass, SEPARATOR_LINE);
     LOG(Bypass, _T("> Misc options :"));
     LOG(Bypass, _T("  --progression : print a message each time this number of ACE have been processed (default is %u)"), DEFAULT_OPT_PROGRESSION);
     LOG(Bypass, _T("  --loglvl/dbglvl : set the log level. Possibles values are <ALL,DBG,INFO,WARN,ERR,SUCC,NONE> (default is %s)"), DEFAULT_OPT_DEBUGLEVEL);
     LOG(Bypass, _T("  --logfile : save all outputs to a file (none by default)"));
     LOG(Bypass, EMPTY_STR);
-    LOG(Bypass, SEPARATOR_STR);
+    LOG(Bypass, SEPARATOR_LINE);
     LOG(Bypass, _T("> Typical examples :"));
     LOG(Bypass, _T("  - Setup recommended logging options :"));
     LOG(Bypass, _T("      %s --loglvl=INFO --logfile=out.log ..."), progName);
@@ -123,7 +123,7 @@ static void ParseOptions(
     //
     // Default options
     //
-    SetLogLevel(DEFAULT_OPT_DEBUGLEVEL);
+    LogSetLogLevel(LOG_ALL_TYPES, DEFAULT_OPT_DEBUGLEVEL);
     opt->misc.progression = DEFAULT_OPT_PROGRESSION;
 
     //
@@ -135,7 +135,7 @@ static void ParseOptions(
             // List
             //
         case _T('L'):
-            SetLogLevel(_T("NONE"));
+            LogSetLogLevel(LOG_ALL_TYPES, _T("NONE"));
             ListImporters();
             ListFilters();
             ListWriters();
@@ -143,19 +143,19 @@ static void ParseOptions(
             break;
 
         case _T('I'):
-            SetLogLevel(_T("NONE"));
+            LogSetLogLevel(LOG_ALL_TYPES, _T("NONE"));
             ListImporters();
             bExitAfterOpt = TRUE;
             break;
 
         case _T('F'):
-            SetLogLevel(_T("NONE"));
+            LogSetLogLevel(LOG_ALL_TYPES, _T("NONE"));
             ListFilters();
             bExitAfterOpt = TRUE;
             break;
 
         case _T('W'):
-            SetLogLevel(_T("NONE"));
+            LogSetLogLevel(LOG_ALL_TYPES, _T("NONE"));
             ListWriters();
             bExitAfterOpt = TRUE;
             break;
@@ -187,7 +187,7 @@ static void ParseOptions(
 
             // TODO : invert after filters (numOfF == 0)
 
-            while (StrNextToken(opt->names.inverted, ",", &ctx, &filter)) {
+            while (StrNextToken(opt->names.inverted, _T(","), &ctx, &filter)) {
                 for (i = 0; i < PLUGIN_MAX_FILTERS; i++) {
                     if (PLUGIN_IS_LOADED(&opt->plugins.filters[i])) {
                         if (STR_EQ(filter, PLUGIN_GET_NAME(&opt->plugins.filters[i]))) {
@@ -213,12 +213,12 @@ static void ParseOptions(
 
         case _T('l'):
             opt->misc.logfile = optarg;
-            SetLogFile(opt->misc.logfile);
+            LogSetLogFile(opt->misc.logfile);
             break;
 
         case _T('d'):
             opt->misc.loglvl = optarg;
-            SetLogLevel(opt->misc.loglvl);
+            LogSetLogLevel(LOG_ALL_TYPES, opt->misc.loglvl);
             break;
 
         case _T('h'):
@@ -235,11 +235,13 @@ static void ParseOptions(
     LPTSTR optname = NULL;
     LPTSTR optval = NULL;
     int i = 0;
+	HANDLE processHeap = NULL;
 
+	processHeap = GetProcessHeap();
     for (i = optind; i < argc; i++) {
         ctx = NULL;
 
-        StrNextToken(argv[i], "=", &ctx, &optname);
+        StrNextToken(argv[i], _T("="), &ctx, &optname);
         optval = ctx; //We do not use StrNextToken here because optval can contain an equal sign.
 
         if (!optname || !optval) {
@@ -247,7 +249,7 @@ static void ParseOptions(
         }
         else {
             LOG(Dbg, _T("Adding plugin option <%s : %s>"), optname, optval);
-            AddStrPair(&gs_PluginOptions.end, optname, optval);
+            AddStrPair((PUTILS_HEAP)&processHeap, &gs_PluginOptions.end, optname, optval);
             if (!gs_PluginOptions.head) {
                 gs_PluginOptions.head = gs_PluginOptions.end;
             }
@@ -313,16 +315,13 @@ static void ConstructAdminSdHolderSD(
     IMPORTED_ACE ace = { 0 };
 
     InitAdminSdHolderSd();
-
     importer->functions.ResetReading(&gc_PluginApiTable, ImporterAce);
     while (importer->functions.GetNextAce(&gc_PluginApiTable, &ace)) {
-        if (_tcsncmp(ADMIN_SD_HOLDER_PARTIAL_DN, ace.imported.objectDn, strlen(ADMIN_SD_HOLDER_PARTIAL_DN)) == 0) {
+        if (ace.imported.objectDn && _tcsncmp(ADMIN_SD_HOLDER_PARTIAL_DN, ace.imported.objectDn, _tcslen(ADMIN_SD_HOLDER_PARTIAL_DN)) == 0) {
             AddAceToAdminSdHolderSd(&ace);
             count++;
         }
-        LocalFreeCheckX(ace.imported.objectDn); // TODO : possible leak, since this is importer-dependant. Call importer's destroyer instead.
-        LocalFreeCheckX(ace.imported.raw);
-        ZeroMemory(&ace, sizeof(IMPORTED_ACE));
+		importer->functions.FreeAce(&gc_PluginApiTable, &ace);
     }
     LOG(Info, SUB_LOG(_T("AdminSdHolder's DACL count : <%u>")), count);
 }
@@ -334,17 +333,14 @@ static void ConstructObjectCache(
     DWORD objCount = 0;
 
     if (!importer->functions.GetNextObject) {
-        FATAL(_T("Object cache is required but importer <%s> does allows Object importation"), PLUGIN_GET_NAME(importer));
+        FATAL(_T("Object cache is required but importer <%s> does not allows Object importation"), PLUGIN_GET_NAME(importer));
     }
-
     importer->functions.ResetReading(&gc_PluginApiTable, ImporterObject);
     while (importer->functions.GetNextObject(&gc_PluginApiTable, &obj)) {
         obj.computed.number = ++objCount;
         CacheInsertObject(&obj);
-        FreeCheckX(obj.imported.dn); // TODO : possible leak, since this is importer-dependant. Call importer's destroyer instead.
-        ZeroMemory(&obj, sizeof(IMPORTED_OBJECT));
+		importer->functions.FreeObject(&gc_PluginApiTable, &obj);
     }
-
     CacheActivateObjectCache();
 }
 
@@ -357,16 +353,12 @@ static void ConstructSchemaCache(
     if (!importer->functions.GetNextSchema) {
         FATAL(_T("Schema cache is required but importer <%s> does allows Schema importation"), PLUGIN_GET_NAME(importer));
     }
-
     importer->functions.ResetReading(&gc_PluginApiTable, ImporterSchema);
     while (importer->functions.GetNextSchema(&gc_PluginApiTable, &sch)) {
         sch.computed.number = ++schCount;
         CacheInsertSchema(&sch);
-        FreeCheckX(sch.imported.dn); // TODO : possible leak, since this is importer-dependant. Call importer's destroyer instead.
-        FreeCheckX(sch.imported.defaultSecurityDescriptor);
-        ZeroMemory(&sch, sizeof(IMPORTED_SCHEMA));
+		importer->functions.FreeSchema(&gc_PluginApiTable, &sch);
     }
-
     CacheActivateSchemaCache();
 }
 
@@ -384,14 +376,15 @@ LPTSTR GetPluginOption(
     return val;
 }
 
-int main(
+int _tmain(
     _In_ int argc,
     _In_ TCHAR * argv[]
     ) {
     DWORD i = 0;
+	HANDLE processHeap = NULL;
 
-    LOG(Succ, _T("Starting"));
-
+	LOG(Succ, _T("Starting"));
+	processHeap = GetProcessHeap();
     //
     // Options parsing
     //
@@ -413,12 +406,10 @@ int main(
         ForeachLoadedPlugins(&options, PluginHelp);
         ExitProcess(EXIT_FAILURE);
     }
-
-
     //
     // Plugins verifications
     //
-    LOG(Succ, "Verifying and choosing plugins");
+    LOG(Succ, _T("Verifying and choosing plugins"));
 
     if (options.plugins.numberOfImporters == 0){
         FATAL(_T("No importer has been loaded"));
@@ -480,8 +471,6 @@ int main(
     //
     LOG(Succ, _T("Initializing plugins"));
     ForeachLoadedPlugins(&options, PluginInitialize);
-
-
     //
     // Constructing caches
     //
@@ -495,10 +484,10 @@ int main(
         LOG(Info, SUB_LOG(_T("Object cache count : <by-sid:%u> <by-dn:%u>")), CacheObjectBySidCount(), CacheObjectByDnCount());
     }
 
-	if (PluginsRequires(&options, OPT_REQ_GUID_RESOLUTION) || PluginsRequires(&options, OPT_REQ_CLASSID_RESOLUTION) || PluginsRequires(&options, OPT_REQ_DISPLAYNAME_RESOLUTION)) {
-        LOG(Info, SUB_LOG(_T("Plugins require GUID or CLASSID or DisplayName resolution, constructing schema cache")));
+	if (PluginsRequires(&options, OPT_REQ_GUID_RESOLUTION) || PluginsRequires(&options, OPT_REQ_DISPLAYNAME_RESOLUTION)) {
+        LOG(Info, SUB_LOG(_T("Plugins require GUID or DisplayName resolution, constructing schema cache")));
         ConstructSchemaCache(&options.plugins.importers[importerSch]);
-        LOG(Info, SUB_LOG(_T("Schema cache count : <by-guid:%u> <by-classid:%u> <by-displayname:%u>")), CacheSchemaByGuidCount(), CacheSchemaByClassidCount(), CacheSchemaByDisplayNameCount());
+        LOG(Info, SUB_LOG(_T("Schema cache count : <by-guid:%u> <by-displayname:%u>")), CacheSchemaByGuidCount(), CacheSchemaByDisplayNameCount());
     }
 
     if (PluginsRequires(&options, OPT_REQ_ADMINSDHOLDER_SD)) {
@@ -546,14 +535,10 @@ int main(
                 options.plugins.writers[i].functions.WriteAce(&gc_PluginApiTable, &ace);
             }
         }
-
         if (aceCount % options.misc.progression == 0) {
             LOG(Info, SUB_LOG(_T("Count : %u")), aceCount);
         }
-
-        FreeCheckX(ace.imported.objectDn); // TODO : possible leak, since this is importer-dependant. Call importer's destroyer instead.
-        LocalFreeCheckX(ace.imported.raw);
-        ZeroMemory(&ace, sizeof(IMPORTED_ACE));
+		options.plugins.importers[importerAce].functions.FreeAce(&gc_PluginApiTable, &ace);
     }
 
     //
@@ -574,7 +559,7 @@ int main(
     ForeachLoadedPlugins(&options, PluginUnload);
 
     CachesDestroy();
-    DestroyStrPairList(gs_PluginOptions.head);
+    DestroyStrPairList((PUTILS_HEAP)&processHeap, gs_PluginOptions.head);
 
     //
     // End

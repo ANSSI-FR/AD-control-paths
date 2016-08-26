@@ -3,7 +3,7 @@
 ![An example of control paths graph](graph-example.png "An example of control paths graph")
 
 Control paths in Active Directory are an aggregation of "control relations" between entities of the domain (users, computers, groups, GPO, containers, etc.)
-which can be visualized as graphs (such as above) and whose purpose is to answer questions like *"Who can get 'Domain Admins' privileges ?"* or *"What resources a user can control ?"*.
+which can be visualized as graphs (such as above) and whose purpose is to answer questions like *"Who can get 'Domain Admins' privileges ?"* or *"What resources can a user control ?"*.
 
 The topic has been presented during a talk at the French conference SSTIC-2014. Our slides and paper can be found here:
 [https://www.sstic.org/2014/presentation/chemins\_de\_controle\_active\_directory/](https://www.sstic.org/2014/presentation/chemins_de_controle_active_directory/).
@@ -14,8 +14,8 @@ This repository contains tools that can be used to generate such graphs.
 
 0. Install / Prerequisites
 0. Usage context
-0. Dump data into TSV files
-0. Import TSV files in graph database
+0. Dump data into CSV files
+0. Import CSV files in graph database
 0. Query graph database
 0. Visualize graphs
 0. Known issues
@@ -25,70 +25,48 @@ This repository contains tools that can be used to generate such graphs.
 
 ### Note:
 
-- **Dump** tools run on Windows (tested on Windows 7 and later).
-- **Import**, **Query** and **Visualize** tools should run on anything supporting Neo4j, Java and Ruby, but have mostly been tested on Linux.
+- **Dump** step runs on Windows only (tested on Windows 7 and later).
+- **Import**, **Query** and **Visualize** steps should run on anything supporting Neo4j, Java and Ruby. They have been tested on Windows and Linux.
 
 
-### Building steps (Visual Studio)
+### Building steps (or just download the last pre compiled Release from Github):
 
-- Build .sln files in the 3 subfolders of /Dump/Src/. 
+- Use an up-to-date Visual Studio to build the 3 solutions in the subfolders of /Dump/Src/. Targets must be:
+Release/x64 for AceFilter
+Release/x64 for ControlRelationProviders
+RelADCP/x64 for DirectoryCrawler.
 
-### Installation steps (tested on Ubuntu 14.04 and Debian 8):
+### Installation steps :
 
-0. Install Java:
+0. Install a Java JRE from https://java.com/en/download/manual.jsp or from your distribution.
 
-        $ sudo apt-get install openjdk-7-jdk
 
-0. Install Neo4j: download and extract [neo4j community edition](http://www.neo4j.org/download), then create an environment variable with its path. **Do not start the Neo4j server before importing your data.**
+0. Install Neo4j: download [neo4j community edition](https://neo4j.com/download/other-releases/) and extract the zip/tar archive (not the installer). **Do not start the Neo4j server before importing your data.**
 
-        $ tar xzvf neo4j-community-2.3.1-unix.tar.gz
-        $ cd neo4j-community-2.3.1
 
-        # the following env variables will be used later
-        $ export NEO4J=$PWD # path to neo4j
-        $ export CLASSPATH=$NEO4J/lib/*:.
+0. Install Ruby from http://rubyinstaller.org/downloads/ or from your distribution.
 
-0. Install Ruby:
 
-        $ sudo apt-get install ruby-full
+0. Install the `neography` gem. In an elevated prompt or with sudo:
 
-0. Install the `neography` gem:
-
-        $ sudo gem install neography
-
-    If your computer does not have access to the Internet, you can download
-    `neography` and all its dependencies using the `bundler` gem. On a separate machine connected
-    to the Internet run the following commands:
-
-        $ sudo gem install bundler
-        [... installs the bundler gem ...]
-        $ cd Query # the Gemfile contains the required gems names, i.e neography
-        $ mkdir -p vendor/cache
-        $ bundle install --path vendor/cache
-        [... downloads neography + dependencies to vendor/cache ...]
-
-    Now copy the `vendor/cache` folder to your offline computer, and run the following
-    commands:
-
-        $ cd vendor/cache
-        $ sudo gem install neograph-1.7.2.gem
-        [... install neography + dependencies ...]
+gem install neography
 
 ### Tested software versions
 
-- Linux distribution: Ubuntu 14.04 and Debian 8
-- Java: 1.7.0
-- Neo4j: 2.3.1 (Unix flavor)
-- Ruby: 2.1.5
+- Windows 7+
+- Linux distributions: Ubuntu 14.04 and Debian 8
+- Java: 1.7 & 1.8
+- Neo4j: 3.0
+- Ruby: 2.2
 - Neography: 1.8.0
 
 ## 2. USAGE CONTEXT
 
-**Note:** No tool needs to run on a domain controller.
+**Note:** None of these tools need to run on a domain controller.
 
 Generating control paths graphs for your domain takes the 4 following steps:
 
-0. **Dump** data called **control relations** from the LDAP directory and the SYSVOL.
+0. **Dump** data from the LDAP directory and the SYSVOL and analyze it to form control relationships.
 0. **Import** these relations into a graph-oriented database (Neo4j).
 0. **Query** that database to export various nodes lists, control paths, or **create JSON files** representing control paths graphs.
 0. **Visualize** graphs created from those JSON files.
@@ -108,39 +86,40 @@ If no access to the domain is given, control graphs can be realized from offline
 
 0. A copied `ntds.dit` file can be re-mounted to expose its directory through LDAP with the `dsamain` utility (available on a Windows server machine having the AD-DS or AD-LDS role, or with the "Active Directory Domain Services Tools" installed):
 
-        dsamain.exe -allowNonAdminAccess -dbpath <ntds.dit path>
+        dsamain.exe -allowNonAdminAccess -dbpath <ntds.dit path> -ldapPort 1234
 
 0. A robocopy of the SYSVOL share preserving security attributes can be done with the `robocopy` utility (the destination folder must be on an NTFS volume):
 
         robocopy.exe \\<DC ip or host>\sysvol\<domain dns name>\Policies <destination path> /W:1 /R:1 /COPY:DATSO /E /TEE /LOG:<logfile.log>
 
     **Note**: to preserve security attributes on the copied files you need the `SeRestorePrivilege` on the local computer you're running the robocopy on (that is, you need to run these commands as local administrator).
-    You then need to use the `SeBackupPrivilege` to process this local robocopy (dumping tools have a `use backup privilege` option).
+    You then need to use the `SeBackupPrivilege` to process this local robocopy (dumping tools have a `use backup privilege` option that you must use).
 
-## 3. DUMP DATA INTO TSV FILES
+## 3. DUMP DATA INTO CSV FILES
 
-**Note:** Dumping tools are available for Windows only (tested on Windows 7 and later).
+**Note:** The generated CSVs can take quite a lot of disk space. The Neo4j importer needs them uncompressed anyway.
 
-Use the powershell script `Dump/Dump.ps1` to dump data from the LDAP directory and SYSVOL.
+Use the powershell script `Dump\Dump.ps1` to dump data from the LDAP directory and SYSVOL.
 The simplest example is:
 
     .\Dump.ps1
         -outputDir        <output directory>
         -filesPrefix      <arbitrary prefix>
         -domainController <DC ip or host>
+		-domainDnsName    <domain FQDN>
         -sysvolPath       <sysvol 'Policies' folder path>
 
 - `-domainController` can be an real domain controller, or a machine exposing the LDAP directory from a re-mounted `ntds.dit` using `dsamain`.
 - `-sysvolPath` can be a network path (example `\\192.168.25.123\sysvol\domain.local\Policies`) or a path to a local robocopy of this folder.
 
-This produces some `.tsv` and `.log` files as follow:
+This produces some `.csv` and `.log` files as follow:
 
     <outputDir>
-        |- logs\*.log           # Log files
-        |- dumps\*.tsv          # Unfiltered dumped information
-        \- relations\*.tsv      # "Control relations" files, which will be imported in the graph database
+        |- yyyymmdd_domainfqdn\Logs\*.log                                    # Log files
+        |- yyyymmdd_domainfqdn\Ldap\*.csv                                    # Unfiltered dumped information
+        \- yyyymmdd_domainfqdn\Relations\*.csv                               # "Control relations" files, which will be imported into the graph database
         
-### Options
+### Other options
 
 - `-help`: show usage.
 - `-user` and `-password`: use explicit authentication (by default implicit authentication is used). The username can be specified in the form `DOMAIN\username`, which can be useful to dump a remote domain accessible through a trust.
@@ -150,65 +129,63 @@ This produces some `.tsv` and `.log` files as follow:
   
 - `-logLevel`: change log and output verbosity (possible values are `ALL`, `DBG`, `INFO` (default), `WARN`, `ERR`, `SUCC` and `NONE`).
 - `-ldapOnly` and `-sysvolOnly`: dump only data from the LDAP directory (respectively from the SYSVOL).
-- `-domainDnsName`: specify the domain dns name (exemple: `domtest.local`), which is not retrieved automatically if you are using a re-mounted `ntds.dit` with `dsamain`.
 - `-ldapPort`: change ldap port (default is `389`). This can be useful for a copied `ntds.dit` re-mounted with `dsamain` since it allows you to use a non standard ldap port.
-- `-useBackupPriv`: use backup privilege to access `-sysvolPath`, which is needed when using a robocopy. You must use a administrator account to use this option.
+- `-useBackupPriv`: use backup privilege to access `-sysvolPath`, which is needed when using a robocopy. You must use an administrator account to use this option.
 - `-generateCmdOnly`: generate the list of commands to use to dump the data, instead of executing these commands. This can be useful on systems where the powershell's execution-policy doesn't allow unsigned scripts to be executed, or on which powershell is not installed in a tested version (v2.0 and later).
 
-## 4. IMPORT TSV FILES IN GRAPH DATABASE
+## 4. IMPORT CSV FILES INTO A GRAPH DATABASE
 
-You can now import the dumped "control relations" TSV files in your Neo4j graph database, using the `Import/ControlPathImporter` Java program.
+You can now import the Relations CSV files along with the AD objects into your Neo4j graph database. This step can be done fully offline.
+You may need admin permissions to start/stop Neo4j.
 
-0. Create the following environment variables:
-
-        $ cd neo4j-community-2.3.1
-        $ export NEO4J=$PWD # path to neo4j
-        $ export CLASSPATH=$NEO4J/lib/*:.
 
 0. Stop the Neo4j server if it is started:
 
-        $ $NEO4J/bin/neo4j stop
+        $env:NEO4J\bin\neo4j stop
 
-0. Compile the import program:
+0. Import CSV files in a new graph database adcp.db:
 
-        $ cd Import
-        $ make
+- Set an environment variable for convenience:
+  $env:DUMP = "PATH_TO\yyyymmdd_domainfqdn\" 
 
-0. Start the import:
+- In neo4j folder:
+  .\bin\neo4j-import --into data\databases\adcp.db --id-type string  `
+  --nodes $env:DUMP\Ldap\all_nodes.csv  `
+  --relationships $((dir $env:DUMP\relations\*.csv -exclude *.deny.csv) -join ',') `
+  --input-encoding UTF-16LE --multiline-fields=true
 
-        $ java ControlPathImporter $NEO4J/data/graph.db DUMP/dumps/dom2012r2.obj.ldpdmp.tsv DUMP/relations/*.tsv
 
-0. This will create a Neo4j database. You can then start the Neo4j server:
+  Headers-related errors will be raised and can be ignored. It is still a good idea to have a look at the bad.log file.
+		
+0. Modify Neo4j default configuration file: conf/neo4j.conf
+		
+		uncomment and set dbms.active_database=adcp.db
+		
+0. Start the Neo4j server:
 
-        $ $NEO4J/bin/neo4j start
+        .\bin\neo4j install-service -Verbose
+        .\bin\neo4j start -Verbose
 
-0. Setup a password for using Neo4j REST interface. Navigate to
-   `http://localhost:7474` (the web interface should be running). Enter the
-   default username and password (`neo4j` for both), then enter a new one. The
-   querying tool uses `secret` as a default password, but this can be changed
-   with the `--password` flag. By default, Neo4j only listens to local
-   connections. More information about this can be found on the official Neo4j
-   documentation.
+0. Change the default password for the Neo4j REST interface. Navigate to `http://localhost:7474` (the web interface should be running). 
+   Enter the default username and password (`neo4j` for both), then enter `secret` as your new password (Hardcoded in the Query script, can be changed with the `--password` flag).
+   By default, Neo4j only listens to local connections.
+   
 
-### Options
-
-- The first argument is the directory that will contain the created database. The
-default for Neo4j is `$NEO4J/data/graph.db`.
-- The second argument is the domain object list file, dumped in `<outputDir>/dumps/*.obj.ldpdmp.tsv`.
-- The remaining arguments are all the control relations files dumped in `<outputDir>/relations/*.tsv`.
-
-## 5. QUERY GRAPH DATABASE
+## 5. QUERYING THE GRAPH DATABASE
 
 The `Query/query.rb` program allows you to query the created Neo4j database.
+	
+### Basic query to get a graph and paths of all nodes able to take control of the Domain Admins group:
 
-    $ cd ../Query
-    $ ./query.rb --help
+    ruby query.rb --quick
+	
+   (though you should use --denyacefile <FILENAME> if you have a non-empty deny relations file).
 
-### Automatic mode
+### Automatic full audit mode (long)
 
-The simplest mode is the "automatic mode", which will create graphs, paths, and nodes lists for a predefined list of builtin targets:
+The "automatic mode" will create graphs, paths, and nodes lists for a predefined list of builtin targets:
 
-    $ ./query.rb --auto
+    ruby query.rb --auto --denyacefile $env:DUMP\relations\*.deny.csv
         [+] running in automatic-mode, lang=en, outdir=out
         [+] control graph for cn=domain admins,cn=users,dc=
         [+] found 13 control nodes, max depth is 5
@@ -228,7 +205,18 @@ The default output directory is `out` and contains the following generated files
 The default target are search with their english DN. You can choose another
 language with the `--lang` option. For now, only `en` and `fr` are supported.
 
-### Other examples
+
+## 6. VISUALIZE GRAPHS
+
+ADCP uses the [OVALI](https://github.com/ANSSI-FR/OVALI) frontend to display
+JSON data files as graphs.
+
+0. Quickstart:
+Open Visualize/index.html with a web brower (Chrome/Chromium is preferred).
+Open one of the generated json files.
+
+
+## 7. OTHER QUERYING EXAMPLES
 
 The `Query/query.rb` program can also search paths for non-predefined targets, as illustrated in the following examples:
 
@@ -325,27 +313,7 @@ queries. You can limit the maximum search depth with the `--maxdepth` option.
 0. See `./query.rb --help` for a full list of possible options.
 
 
-## 6. VISUALIZE GRAPHS
-
-ADCP uses the [OVALI](https://github.com/ANSSI-FR/OVALI) frontend to display
-JSON data files as graphs. Refer to the project's README for detailed
-instructions.
-
-Quickstart:
-0. Run an HTTP server whose document root is the `Visualize` folder:
-
-        $ cd Visualize
-        $ python -m SimpleHTTPServer 8000
-
-0. Connect to http://localhost:8000 with a web browser.
-
-## 7. KNOWN ISSUES
-
-- Depending on the volume of the Active Directory instance (number of objects and number of relations between them), some tools can be really memory greedy and fail on machines with insufficient RAM. Specifically: dumping tools when LDAP requests return a large amount of data, and querying tools (`neo4j` and `query.rb`) when retrieving large graphs and very deep paths. To mitigate this issue, use machines with a sufficient amount of memory and a 64-bits OS (dumping tools are provided for x64 by default), and use the `--maxdepth` option in your queries.
-
-- On particular datasets, certain queries seems to return paths missing a very few relations, leading to graphs with a small number of "unconnected nodes". The root cause of this issue, which only occurs for some specific datasets, is currently unknown.
-
-
 ## 8. AUTHORS
 
+Geraud de Drouas - ANSSI - 2015-2016
 Lucas Bouillot, Emmanuel Gras - ANSSI - Bureau Audits et Inspections - 2014

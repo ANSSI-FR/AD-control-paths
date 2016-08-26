@@ -29,13 +29,14 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{9B9BA8D9-9BD6-41A2-88AC-9FC391C21E4E}</ProjectGuid>
     <RootNamespace>AceFilter</RootNamespace>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v140</PlatformToolset>
-    <CharacterSet>NotSet</CharacterSet>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -48,7 +49,7 @@
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v140</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
-    <CharacterSet>NotSet</CharacterSet>
+    <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
@@ -131,11 +132,13 @@
       <CompileAs>CompileAsC</CompileAs>
       <ShowIncludes>false</ShowIncludes>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <TreatWarningAsError>true</TreatWarningAsError>
+      <TreatWarningAsError>false</TreatWarningAsError>
       <EnablePREfast>true</EnablePREfast>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>..\x64\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>LibUtils.lib;LibCsv.lib;LibLog.lib;LibCache.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
       <Command>copy $(OutDir)\$(TargetFileName) ..\..\..\Bin\</Command>
@@ -181,19 +184,20 @@
     <ClCompile>
       <WarningLevel>Level4</WarningLevel>
       <Optimization>MaxSpeed</Optimization>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-      <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <BrowseInformation>true</BrowseInformation>
       <CompileAs>CompileAsC</CompileAs>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <TreatWarningAsError>true</TreatWarningAsError>
       <EnablePREfast>false</EnablePREfast>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
     </ClCompile>
     <Link>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalLibraryDirectories>..\x64\Release\</AdditionalLibraryDirectories>
+      <AdditionalDependencies>LibUtils.lib;LibCsv.lib;LibLog.lib;LibCache.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <Bscmake>
       <PreserveSbr>true</PreserveSbr>
@@ -319,22 +323,16 @@
     <ClCompile Include="AceFilter.c" />
     <ClCompile Include="AceConstants.c" />
     <ClCompile Include="Cache.c" />
-    <ClCompile Include="Common.c" />
-    <ClCompile Include="getopt.c" />
     <ClCompile Include="ImportedObjects.c" />
-    <ClCompile Include="InputFile.c" />
     <ClCompile Include="Plugin.c" />
     <ClCompile Include="PluginApi.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AceConstants.h" />
-    <ClInclude Include="AvlTable.h" />
     <ClInclude Include="Cache.h" />
     <ClInclude Include="ImportedObjects.h" />
     <ClInclude Include="AceFilter.h" />
     <ClInclude Include="Common.h" />
-    <ClInclude Include="getopt.h" />
-    <ClInclude Include="InputFile.h" />
     <ClInclude Include="Plugin.h" />
     <ClInclude Include="PluginApi.h" />
     <ClInclude Include="PluginCommon.h" />

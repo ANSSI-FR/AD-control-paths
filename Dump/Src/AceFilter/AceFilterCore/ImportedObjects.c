@@ -5,14 +5,37 @@
 /* --- INCLUDES ------------------------------------------------------------- */
 #include "ImportedObjects.h"
 
+
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 static SECURITY_DESCRIPTOR gs_AdminSdHolderSD = { 0 };
 static BYTE gs_AdminSdHolderACL[ACL_ADMIN_SD_HOLDER_SIZE] = { 0 };
 static PSECURITY_DESCRIPTOR gs_pAdminSdHolderSD = NULL;
 static BOOL gs_ObjectCacheActivated = FALSE;
 static BOOL gs_SchemaCacheActivated = FALSE;
+static LOG_LEVEL gs_debugLevel = Succ;
+static HANDLE gs_hLogFile = INVALID_HANDLE_VALUE;
+
 
 /* --- PUBLIC VARIABLES ----------------------------------------------------- */
+struct _WELLKNOWN_BIGRAMS wellKnownBigrams[] = {
+	{ _T(";RO)"),_T("-498") },
+	{ _T(";LA)"),_T("-500") },
+	{ _T(";LG)"),_T("-501") },
+	{ _T(";DA)"),_T("-512") },
+	{ _T(";DU)"),_T("-513") },
+	{ _T(";DG)"),_T("-514") },
+	{ _T(";DC)"),_T("-515") },
+	{ _T(";DD)"),_T("-516") },
+	{ _T(";CA)"),_T("-517") },
+	{ _T(";SA)"),_T("-518") },
+	{ _T(";EA)"),_T("-519") },
+	{ _T(";PA)"),_T("-520") },
+	{ _T(";CN)"),_T("-522") },
+	{ _T(";AP)"),_T("-525") },
+	{ _T(";RS)"),_T("-553") },
+};
+
+
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS ----------------------------------------------------- */
 ACCESS_MASK GetAccessMask(
@@ -180,11 +203,11 @@ BOOL IsInDefaultSd(
     PIMPORTED_OBJECT object = ResolverGetAceObject(ace);
 
     if (!object) {
-        LOG(Err, _T("Failed to resolve object <%s> for ace <%s>"), ace->imported.objectDn, ace->computed.number);
+        LOG(Err, _T("Failed to resolve object <%s> for ace <%d>"), ace->imported.objectDn, ace->computed.number);
     }
     else {
         for (i = 0; i < object->computed.objectClassCount; i++) {
-            schemaClass = ResolverGetObjectObjectClass(object, i);
+            schemaClass = GetSchemaByDisplayName(object->imported.objectClassesNames[i]);
             if (!schemaClass) {
                 LOG(Err, _T("Failed to get class %s of object <%s> (ace <%u>)"), object->imported.objectClassesNames[i], object->imported.dn, ace->computed.number);
             }
@@ -196,7 +219,6 @@ BOOL IsInDefaultSd(
             }
         }
     }
-
     return FALSE;
 }
 
@@ -204,6 +226,9 @@ BOOL isObjectTypeClass(
 	_In_ PIMPORTED_ACE ace
 	) {
 	DWORD dwFlags = 0;
+	PIMPORTED_OBJECT objectSchemaObjectType = NULL;
+	GUID * objectType = NULL;
+	PIMPORTED_SCHEMA schemaObjectType = NULL;
 	//
 	// No ObjectType GUID ?
 	//
@@ -211,14 +236,13 @@ BOOL isObjectTypeClass(
 	if ((dwFlags & ACE_OBJECT_TYPE_PRESENT) == 0)
 		return FALSE;
 
-	GUID * objectType = GetObjectTypeAce(ace);
-	PIMPORTED_SCHEMA schemaObjectType = GetSchemaByGuid(objectType);
-
+	objectType = GetObjectTypeAce(ace);
+	schemaObjectType = GetSchemaByGuid(objectType);
 	if (!schemaObjectType) {
 		LOG(Dbg, _T("ObjectType GUID does not represent anything from the schema. object <%s> for ACE <%u>."), ace->imported.objectDn, ace->computed.number);
 		return FALSE;
 	}
-	PIMPORTED_OBJECT objectSchemaObjectType = ResolverGetSchemaObject(schemaObjectType);
+	objectSchemaObjectType = ResolverGetSchemaObject(schemaObjectType);
 	if (!objectSchemaObjectType || objectSchemaObjectType->computed.objectClassCount != 2 || _tcscmp(objectSchemaObjectType->imported.objectClassesNames[1], _T("classSchema"))) {
 		LOG(Dbg, _T("ObjectType GUID does not represent a class. object <%s> for ACE <%u>."), ace->imported.objectDn, ace->computed.number);
 		return FALSE;
@@ -242,9 +266,10 @@ BOOL isObjectTypeClassMatching(
 	if ((dwFlags & ACE_OBJECT_TYPE_PRESENT) == 0)
 		return FALSE;
 	//
-	// First, we have to check the objectType, to see if the ACE actually applies to this object.
-	// For this, we have to check if the objectType effectively represents a CLASS, and that the
-	// ACE does not only contains the CREATE/DELETE_CHILD rights (otherwise it is not a filter)
+	// We have to check the objectType, to see if the ACE actually applies to this object.
+	// For this, we have to check if the objectType effectively represents a CLASS and then the right one.
+	// Note that OT checks the child class for create/delete child and the current class for every other right.
+	// Note that matching or non-matching inheritedObjectType ACEs apply to the current object whatever the class.
 	//
 	PIMPORTED_OBJECT object = ResolverGetAceObject(ace);
 	GUID * objectType = GetObjectTypeAce(ace);
@@ -254,13 +279,10 @@ BOOL isObjectTypeClassMatching(
 		LOG(Dbg, _T("Cannot lookup object <%s> to verify ACE filtering for ACE <%u>. Keep by default."), ace->imported.objectDn, ace->computed.number);
 		return FALSE;
 	}
-
 	if (!schemaObjectType) {
 		// ObjectType GUID does not represent anything from the schema, this is not ACE filtering so we keep it.
 		return FALSE;
 	}
-
-
 	if (isObjectTypeClass(ace)) {
 		for (i = 0; i < object->computed.objectClassCount; i++) {
 			if (_tcscmp(object->imported.objectClassesNames[i],schemaObjectType->imported.lDAPDisplayName) == 0) {
@@ -272,10 +294,8 @@ BOOL isObjectTypeClassMatching(
 		return FALSE;
 	}
 	else {
-		// 
 		return FALSE;
 	}
-
 }
 
 void CacheActivateObjectCache(
@@ -292,53 +312,20 @@ LPTSTR  ResolverGetAceTrusteeStr(
     _In_ PIMPORTED_ACE ace
     ){
     if (!ace->computed.trusteeStr) {
+		// Either resolved or computed...
         PIMPORTED_OBJECT obj = ResolverGetAceTrustee(ace);
         if (obj) {
             ace->computed.trusteeStr = obj->imported.dn;
         }
         else {
+			// this will leak, should be infrequent though
             ConvertSidToStringSid(GetTrustee(ace), &ace->computed.trusteeStr);
+			CharLower(ace->computed.trusteeStr);
         }
     }
 
     return ace->computed.trusteeStr;
 }
-
-/*
-LPTSTR ResolverGetObjectPrimaryOwnerStr(
-    _In_ PIMPORTED_OBJECT obj
-    ){
-    if (!obj->computed.primaryOwnerStr) {
-        PIMPORTED_OBJECT ownerObj = ResolverGetObjectPrimaryOwner(obj);
-        if (ownerObj) {
-            obj->computed.primaryOwnerStr = ownerObj->imported.dn;
-        }
-        else {
-            ConvertSidToStringSid(obj->imported.primaryOwner, &obj->computed.primaryOwnerStr);
-        }
-    }
-
-    return obj->computed.primaryOwnerStr;
-}
-*/
-
-/*
-LPTSTR ResolverGetObjectPrimaryGroupStr(
-    _In_ PIMPORTED_OBJECT obj
-    ){
-    if (!obj->computed.primaryGroupStr) {
-        PIMPORTED_OBJECT groupObj = ResolverGetObjectPrimaryGroup(obj);
-        if (groupObj) {
-            obj->computed.primaryGroupStr = groupObj->imported.dn;
-        }
-        else {
-            ConvertSidToStringSid(obj->imported.primaryGroup, &obj->computed.primaryGroupStr);
-        }
-    }
-
-    return obj->computed.primaryGroupStr;
-}
-*/
 
 PIMPORTED_OBJECT ResolverGetAceTrustee(
     _In_ PIMPORTED_ACE ace
@@ -353,56 +340,6 @@ PIMPORTED_OBJECT ResolverGetAceTrustee(
 
     return NULL_IF_BAD(ace->resolved.trustee);
 }
-
-PDWORD ResolverGetObjectClassesIds(
-	_In_ PIMPORTED_OBJECT obj
-	) {
-	DWORD i;
-	// Clean this
-	if (!obj->resolved.objectClassesIds) {
-		obj->resolved.objectClassesIds = (PDWORD)LocalAllocCheckX(sizeof(DWORD) * obj->computed.objectClassCount);
-		for (i = 0 ; i < obj->computed.objectClassCount ; i++)
-			obj->resolved.objectClassesIds[i] = (GetSchemaByDisplayName(obj->imported.objectClassesNames[i]))->imported.governsID;
-		if (!obj->resolved.objectClassesIds) {
-			LOG(Dbg, _T("Cannot resolve ClassesIds for object <%s> <%u>"), obj->imported.dn, obj->computed.number);
-			obj->resolved.objectClassesIds = BAD_POINTER;
-			}
-	}
-
-	return NULL_IF_BAD(obj->resolved.objectClassesIds);
-}
-
-/*
-PIMPORTED_OBJECT ResolverGetObjectPrimaryOwner(
-    _In_ PIMPORTED_OBJECT obj
-    ) {
-    if (!obj->resolved.primaryOwner) {
-        obj->resolved.primaryOwner = GetObjectBySid(obj->imported.primaryOwner);
-        if (!obj->resolved.primaryOwner) {
-            LOG(Dbg, _T("Cannot resolve primary-owner SID for object <%s> <%u>"), obj->imported.dn, obj->computed.number);
-            obj->resolved.primaryOwner = BAD_POINTER;
-        }
-    }
-
-    return NULL_IF_BAD(obj->resolved.primaryOwner);
-}
-*/
-
-/*
-PIMPORTED_OBJECT ResolverGetObjectPrimaryGroup(
-    _In_ PIMPORTED_OBJECT obj
-    ) {
-    if (!obj->resolved.primaryGroup) {
-        obj->resolved.primaryGroup = GetObjectBySid(obj->imported.primaryGroup);
-        if (!obj->resolved.primaryGroup) {
-            LOG(Dbg, _T("Cannot resolve primary-group SID for object <%s> <%u>"), obj->imported.dn, obj->computed.number);
-            obj->resolved.primaryGroup = BAD_POINTER;
-        }
-    }
-
-    return NULL_IF_BAD(obj->resolved.primaryGroup);
-}
-*/
 
 PIMPORTED_OBJECT ResolverGetAceObject(
     _In_ PIMPORTED_ACE ace
@@ -432,51 +369,77 @@ PSECURITY_DESCRIPTOR ResolverGetSchemaObject(
     return NULL_IF_BAD(sch->resolved.object);
 }
 
-PIMPORTED_SCHEMA ResolverGetObjectObjectClass(
-    _In_ PIMPORTED_OBJECT obj,
-    _In_ DWORD idx
-    ) {
-    if (idx >= obj->computed.objectClassCount) {
-        return NULL;
-    }
-    if (!obj->resolved.objectClasses){
-        obj->resolved.objectClasses = (PIMPORTED_SCHEMA*)LocalAllocCheckX(sizeof(PIMPORTED_SCHEMA)* obj->computed.objectClassCount);
-    }
-    if (!obj->resolved.objectClasses[idx]) {
-        obj->resolved.objectClasses[idx] = GetSchemaByClassid(obj->resolved.objectClassesIds[idx]);
-        if (!obj->resolved.objectClasses[idx]) {
-            obj->resolved.objectClasses[idx] = BAD_POINTER;
-            LOG(Dbg, _T("Cannot resolve objectClass <%#08x> for object <%u>"), obj->resolved.objectClassesIds[idx], obj->imported.dn);
-        }
-    }
-
-    return NULL_IF_BAD(obj->resolved.objectClasses[idx]);
-}
-
 PSECURITY_DESCRIPTOR ResolverGetSchemaDefaultSD(
     _In_ PIMPORTED_SCHEMA sch
     ) {
-    if (!sch->resolved.defaultSD) {
-        sch->resolved.defaultSD = BAD_POINTER;
+	BOOL bResult = FALSE;
+	LPTSTR backslashPos = NULL;
+	LPTSTR destinationSddl = NULL;
+	LPTSTR sourceSddl = NULL;
+	size_t szSddl = 0;
+	LPTSTR currentSID = NULL;
+	LPTSTR current = NULL;
+	LPTSTR domainStringSid = NULL;
+	PIMPORTED_OBJECT objDomain = NULL;
+	DWORD i = 0;
+	HANDLE processHeap = NULL;
 
+	processHeap = GetProcessHeap();
+    if (!sch->computed.defaultSD && sch->imported.defaultSecurityDescriptor) {
+        sch->computed.defaultSD = BAD_POINTER;
         //
-        // TODO : removed for now, because ConvertStringSecurityDescriptorToSecurityDescriptor fails on non-domain computers
-        //        because they don't know the mapping of well known bigrams used in SDDL (DA -> Domain Admins, etc.)
+        // Replace known bigrams that have a domain-depending SID
+		// Otherwise ConvertStringSecurityDescriptorToSecurityDescriptor fails on non-domain computers
+        // because they don't know the mapping of well-known bigrams used in SDDL (DA -> Domain Admins, etc.)
         //
+		sourceSddl = UtilsHeapStrDupHelper((PUTILS_HEAP)&processHeap, sch->imported.defaultSecurityDescriptor);
+		szSddl = _tcslen(sourceSddl);
+		CharUpper(sourceSddl);
+		backslashPos = _tcschr(sourceSddl, _T('\\'));
+		while (backslashPos) {
+			(TCHAR)*backslashPos = '\x00\x00';
+			_tcscat_s(sourceSddl, szSddl, backslashPos + 1);
+			backslashPos = _tcschr(sourceSddl, _T('\\'));
+		}
+        objDomain = GetObjectByDn(GetDomainDn());
+		// Do not lowercase the sids here, we need them as-is for conversion to binary sid
+		ConvertSidToStringSid(objDomain->imported.sid, &domainStringSid);
+		currentSID = UtilsHeapAllocStrHelper((PUTILS_HEAP)&processHeap,MAX_SID_SIZE);
+		for (i = 0; i < ARRAY_COUNT(wellKnownBigrams); i++) {
+			RtlZeroMemory(currentSID, MAX_SID_SIZE * sizeof(TCHAR));
+			_tcscat_s(currentSID, MAX_SID_SIZE, domainStringSid);
+			_tcscat_s(currentSID, MAX_SID_SIZE, wellKnownBigrams[i].rid);
 
-        //BOOL bResult = FALSE;
-
-        //bResult = ConvertStringSecurityDescriptorToSecurityDescriptor(sch->imported.defaultSecurityDescriptor, SDDL_REVISION_1, &sch->resolved.defaultSD, NULL);
-        //if (!bResult) {
-        //    LOG(Err, _T("Failed to convert defaultSD of class <%s> : <%u>"), sch->imported.dn, GetLastError());
-        //    sch->resolved.defaultSD = BAD_POINTER;
-        //}
-        //else {
-        //    LOG(Dbg, _T("Successfully converted defaultSD of class <%s>"), sch->imported.dn);
-        //}
+			current = _tcsstr(sourceSddl, wellKnownBigrams[i].bigram);
+			while (current) {
+				szSddl += _tcslen(currentSID) - 2;
+				destinationSddl = UtilsHeapAllocHelper((PUTILS_HEAP)&processHeap, (DWORD)(szSddl * sizeof(TCHAR)));
+				memcpy_s(destinationSddl, szSddl * sizeof(TCHAR), sourceSddl, (current - sourceSddl + 1) * sizeof(TCHAR)); //also copy the ;
+				_tcscat_s(destinationSddl, szSddl, currentSID);
+				_tcscat_s(destinationSddl, szSddl, current + 3);
+				UtilsHeapFreeHelper((PUTILS_HEAP)&processHeap, sourceSddl);
+				sourceSddl = UtilsHeapStrDupHelper((PUTILS_HEAP)&processHeap, destinationSddl);
+				UtilsHeapFreeHelper((PUTILS_HEAP)&processHeap, destinationSddl);
+				current = _tcsstr(sourceSddl, wellKnownBigrams[i].bigram);
+			}
+		}
+		PSECURITY_DESCRIPTOR psd = NULL;
+		bResult = ConvertStringSecurityDescriptorToSecurityDescriptor(sourceSddl, SDDL_REVISION_1, &psd, NULL);
+        //bResult = ConvertStringSecurityDescriptorToSecurityDescriptor(sourceSddl, SDDL_REVISION_1, &sch->computed.defaultSD, NULL);
+        if (!bResult) {
+            LOG(Err, _T("Failed to convert defaultSD of class <%s> : <%u>"), sch->imported.dn, GetLastError());
+            sch->computed.defaultSD = BAD_POINTER;
+        }
+        else {
+            LOG(Dbg, _T("Successfully converted defaultSD of class <%s>"), sch->imported.dn);
+			sch->computed.defaultSD = UtilsHeapMemDupHelper((PUTILS_HEAP)&processHeap, psd, GetSecurityDescriptorLength(psd));
+        }
+		UtilsHeapFreeHelper((PUTILS_HEAP)&processHeap, currentSID);
+		UtilsHeapFreeHelper((PUTILS_HEAP)&processHeap, sourceSddl);
+		LocalFree(domainStringSid);
+		LocalFree(psd);
     }
-
-    return NULL_IF_BAD(sch->resolved.defaultSD);
+    return NULL_IF_BAD(sch->computed.defaultSD);
 }
 
 
@@ -510,16 +473,6 @@ PIMPORTED_SCHEMA GetSchemaByGuid(
     return CacheLookupSchemaByGuid(guid);
 }
 
-PIMPORTED_SCHEMA GetSchemaByClassid(
-    _In_ DWORD classid
-    ) {
-    if (!gs_SchemaCacheActivated) {
-        FATAL(_T("Using schema cache (ClassID) while it has not been activated (plugin missing requirement?)"));
-    }
-
-    return CacheLookupSchemaByClassid(classid);
-}
-
 PIMPORTED_SCHEMA GetSchemaByDisplayName(
 	_In_ LPTSTR displayname
 	) {
@@ -539,6 +492,15 @@ LPTSTR GetDomainDn(
     return CacheGetDomainDn();
 }
 
+GUID *GetAdmPwdGuid(
+) {
+	if (!gs_SchemaCacheActivated) {
+		FATAL(_T("Using schema cache (Domain) while it has not been activated (plugin missing requirement?)"));
+	}
+
+	return CacheGetAdmPwdGuid();
+}
+
 LPTSTR GetAceRelationStr(
     _In_ ACE_RELATION rel
     ) {
@@ -547,4 +509,102 @@ LPTSTR GetAceRelationStr(
     }
 
     return gc_AceRelations[rel];
+}
+
+// Function taken from another project by A.Bordes.
+BOOL IsAceInSd(
+	_In_ PACE_HEADER pHeaderAceToCheck,
+	_In_ PSECURITY_DESCRIPTOR pSd
+) {
+	BOOL bResult, bDaclPresent, bDaclDefaulted;
+	ACL_SIZE_INFORMATION AclSizeInfo;
+	PACL pDacl;
+	PACE_HEADER pAceHeader;
+
+	// S'il n'y a pas de descripteur de sécurité, on renvoie tourjous FALSE
+	if (!pSd)
+		return FALSE;
+
+	bResult = GetSecurityDescriptorDacl(pSd, &bDaclPresent, &pDacl, &bDaclDefaulted);
+	if (!bResult || !bDaclPresent)
+		return FALSE;
+
+	bResult = GetAclInformation(pDacl, &AclSizeInfo, sizeof(AclSizeInfo), AclSizeInformation);
+	if (!bResult)
+		return FALSE;
+
+	// On récupère les informations
+	for (DWORD i = 0; i < AclSizeInfo.AceCount; i++)
+	{
+		// On récupère l'ACE
+		bResult = GetAce(pDacl, i, (LPVOID*)&pAceHeader);
+		if (!bResult)
+			return FALSE;
+
+		if (pHeaderAceToCheck->AceType == pAceHeader->AceType)
+		{
+			if ((pAceHeader->AceType == ACCESS_ALLOWED_ACE_TYPE) || (pAceHeader->AceType == ACCESS_DENIED_ACE_TYPE))
+			{
+				PACCESS_ALLOWED_ACE pAce, pAceToCheck;
+				pAce = (PACCESS_ALLOWED_ACE)pAceHeader;
+				pAceToCheck = (PACCESS_ALLOWED_ACE)pHeaderAceToCheck;
+
+				if ((pAce->Mask == pAceToCheck->Mask)
+					&& (EqualSid(&pAce->SidStart, &pAceToCheck->SidStart)))
+				{
+					return TRUE;
+				}
+			}
+			else if ((pAceHeader->AceType == ACCESS_ALLOWED_OBJECT_ACE_TYPE) || (pAceHeader->AceType == ACCESS_DENIED_OBJECT_ACE_TYPE))
+			{
+				PACCESS_ALLOWED_OBJECT_ACE pAce, pAceToCheck;
+				pAce = (PACCESS_ALLOWED_OBJECT_ACE)pAceHeader;
+				pAceToCheck = (PACCESS_ALLOWED_OBJECT_ACE)pHeaderAceToCheck;
+
+				PSID pSidToCheck, pSidAce;
+
+				if ((pAce->Flags == pAceToCheck->Flags) && (pAce->Mask == pAceToCheck->Mask))
+				{
+					if (pAce->Flags == 0)
+					{
+						// MSDN (SidStart) : The offset of this member can vary.
+						// If the Flags member is zero, the SidStart member starts at the offset specified by the ObjectType member.
+						pSidToCheck = &pAceToCheck->ObjectType;
+						pSidAce = &pAce->ObjectType;
+
+						if (EqualSid(pSidToCheck, pSidAce))
+							return TRUE;
+					}
+					else if ((pAce->Flags == ACE_OBJECT_TYPE_PRESENT) || (pAce->Flags == ACE_INHERITED_OBJECT_TYPE_PRESENT))
+					{
+						// If Flags contains only one flag (either ACE_OBJECT_TYPE_PRESENT
+						// or ACE_INHERITED_OBJECT_TYPE_PRESENT), the SidStart member starts at
+						// the offset specified by the InheritedObjectType member.
+						pSidToCheck = &pAceToCheck->InheritedObjectType;
+						pSidAce = &pAce->InheritedObjectType;
+
+						if ((EqualSid(pSidToCheck, pSidAce)) &&
+							(GUID_EQ(&pAceToCheck->ObjectType, &pAce->ObjectType)))
+							return TRUE;
+					}
+					else
+					{
+						pSidToCheck = &pAceToCheck->SidStart;
+						pSidAce = &pAce->SidStart;
+
+						if ((EqualSid(pSidToCheck, pSidAce)) &&
+							(GUID_EQ(&pAceToCheck->ObjectType, &pAce->ObjectType)) &&
+							(GUID_EQ(&pAceToCheck->InheritedObjectType, &pAce->InheritedObjectType)))
+							return TRUE;
+					}
+				}
+			}
+			else
+			{
+				FATAL_FCT(_T("Unknown ACE type <%u>"), pAceHeader->AceType);
+			}
+		}
+	}
+
+	return FALSE;
 }

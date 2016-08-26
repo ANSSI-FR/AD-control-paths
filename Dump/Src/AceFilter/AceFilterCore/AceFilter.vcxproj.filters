@@ -35,12 +35,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="getopt.c">
-      <Filter>Source Files\Utils</Filter>
-    </ClCompile>
-    <ClCompile Include="Common.c">
-      <Filter>Source Files\Utils</Filter>
-    </ClCompile>
     <ClCompile Include="Plugin.c">
       <Filter>Source Files\Plugins</Filter>
     </ClCompile>
@@ -49,9 +43,6 @@
     </ClCompile>
     <ClCompile Include="PluginApi.c">
       <Filter>Source Files\Plugins</Filter>
-    </ClCompile>
-    <ClCompile Include="InputFile.c">
-      <Filter>Source Files\Utils</Filter>
     </ClCompile>
     <ClCompile Include="Cache.c">
       <Filter>Source Files\Utils</Filter>
@@ -67,26 +58,17 @@
     <ClInclude Include="Common.h">
       <Filter>Header Files\Utils</Filter>
     </ClInclude>
-    <ClInclude Include="getopt.h">
-      <Filter>Header Files\Utils</Filter>
-    </ClInclude>
     <ClInclude Include="Plugin.h">
       <Filter>Header Files\Plugins</Filter>
     </ClInclude>
     <ClInclude Include="PluginApi.h">
       <Filter>Header Files\Plugins</Filter>
     </ClInclude>
-    <ClInclude Include="InputFile.h">
-      <Filter>Header Files\Utils</Filter>
-    </ClInclude>
     <ClInclude Include="PluginCommon.h">
       <Filter>Header Files\Plugins</Filter>
     </ClInclude>
     <ClInclude Include="AceFilter.h">
       <Filter>Header Files\Main</Filter>
-    </ClInclude>
-    <ClInclude Include="AvlTable.h">
-      <Filter>Header Files\Utils</Filter>
     </ClInclude>
     <ClInclude Include="Cache.h">
       <Filter>Header Files\Utils</Filter>

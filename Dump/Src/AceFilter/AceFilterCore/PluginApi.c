@@ -7,35 +7,39 @@
 
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 /* --- PUBLIC VARIABLES ----------------------------------------------------- */
+// As we do a jump table from non static dllimports
+#pragma warning(disable:4232)
 PLUGIN_API_TABLE const gc_PluginApiTable = {
-    .Common = {
-        .Log = Log, // Do not use directly (use the LOG() macro implicitely using this instead)
-        .GetPluginOption = GetPluginOption,
-        .ConvertStrGuidToGuid = ConvertStrGuidToGuid,
-        .StrNextToken = StrNextToken,
-        .IsInSetOfStrings = IsInSetOfStrings,
-        .Hexify = Hexify,
-        .Unhexify = Unhexify,
-        .EnablePrivForCurrentProcess = EnablePrivForCurrentProcess,
-    },
+	.Common = {
+		.Log = Log, // Do not use directly (use the LOG() macro implicitely using this instead)
+		.GetPluginOption = GetPluginOption,
+		.ConvertStrGuidToGuid = ConvertStrGuidToGuid,
+		.StrNextToken = StrNextToken,
+		.IsInSetOfStrings = IsInSetOfStrings,
+		.Hexify = Hexify,
+		.Unhexify = Unhexify,
+		.EnablePrivForCurrentProcess = EnablePrivForCurrentProcess,
+	},
 
-    .InputFile = {
-        .ParseLine = ParseLine,
-        .ReadLine = ReadLine,
-        .ReadParseTsvLine = ReadParseTsvLine,
-        .ForeachLine = ForeachLine,
-        .InitInputFile = InitInputFile,
-        .ResetInputFile = ResetInputFile,
-        .CloseInputFile = CloseInputFile,
-    },
+	.InputCsv = {
+		.CsvOpenRead = CsvOpenRead,
+		.CsvGetNextRecord = CsvGetNextRecord,
+		.CsvClose = CsvClose,
+		.CsvResetFile = CsvResetFile,
+		.CsvHeapFree = CsvHeapFree,
+		.CsvRecordArrayHeapFree = CsvRecordArrayHeapFree,
+		.CsvOpenWrite = CsvOpenWrite,
+		.CsvWriteNextRecord = CsvWriteNextRecord,
+		.CsvGetLastError = CsvGetLastError,
+},
 
     .Alloc = {
-        .LocalAllocCheck = LocalAllocCheck,
-        .LocalFreeCheck = LocalFreeCheck,
-        .HeapAllocCheck = HeapAllocCheck,
-        .HeapFreeCheck = HeapFreeCheck,
-        .StrDupCheck = StrDupCheck,
-        .FreeCheck = FreeCheck,
+        .UtilsHeapAlloc = UtilsHeapAlloc,
+        .UtilsHeapFree = UtilsHeapFree,
+        .UtilsHeapStrDup = UtilsHeapStrDup,
+		.UtilsHeapFreeArray = UtilsHeapFreeArray,
+		.UtilsHeapCreate = UtilsHeapCreate,
+		.UtilsHeapDestroy = UtilsHeapDestroy,
     },
 
     .Ace = {
@@ -52,26 +56,19 @@ PLUGIN_API_TABLE const gc_PluginApiTable = {
 			.isObjectTypeClass = isObjectTypeClass,
     },
 
-    .Object = {
-        .ParseObjectClasses = ParseObjectClasses,
-    },
-
     .Resolver = {
         .ResolverGetAceTrusteeStr = ResolverGetAceTrusteeStr,
-        //.ResolverGetObjectPrimaryOwnerStr = ResolverGetObjectPrimaryOwnerStr,
-        //.ResolverGetObjectPrimaryGroupStr = ResolverGetObjectPrimaryGroupStr,
         .ResolverGetAceTrustee = ResolverGetAceTrustee,
-		.ResolverGetObjectClassesIds = ResolverGetObjectClassesIds,
         .ResolverGetAceObject = ResolverGetAceObject,
-        .ResolverGetObjectObjectClass = ResolverGetObjectObjectClass,
         .ResolverGetSchemaDefaultSD = ResolverGetSchemaDefaultSD,
         .ResolverGetSchemaObject = ResolverGetSchemaObject,
         .GetObjectByDn = GetObjectByDn,
         .GetObjectBySid = GetObjectBySid,
         .GetSchemaByGuid = GetSchemaByGuid,
         .GetDomainDn = GetDomainDn,
+		.GetAdmPwdGuid = GetAdmPwdGuid,
     }
 };
-
+#pragma warning(default:4232)
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 /* --- PUBLIC FUNCTIONS ----------------------------------------------------- */

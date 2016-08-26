@@ -10,6 +10,7 @@
 #define PLUGIN_NAME         _T("Sysvol")
 #define PLUGIN_KEYWORD      _T("SVL")
 #define PLUGIN_DESCRIPTION  _T("Imports only ACE from the SYSVOL (may be a Robocopy). OBJ and SCH must come from another importer.");
+#define SYSVOL_HEAP_NAME    _T("SYSVOLHEAP")
 
 PLUGIN_DECLARE_NAME;
 PLUGIN_DECLARE_KEYWORD;
@@ -20,6 +21,7 @@ PLUGIN_DECLARE_FINALIZE;
 PLUGIN_DECLARE_HELP;
 PLUGIN_DECLARE_GETNEXTACE;
 PLUGIN_DECLARE_RESETREADING;
+PLUGIN_DECLARE_FREEACE;
 
 PLUGIN_DECLARE_REQUIREMENT(PLUGIN_REQUIRE_DN_RESOLUTION); // for api->Resolver.GetDomainDn();
 
@@ -39,6 +41,7 @@ typedef enum _GPO_ACTION {
 
 
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
+static PUTILS_HEAP gs_hHeapSysvol = INVALID_HANDLE_VALUE;
 static BOOL gs_UseBackupPriv = FALSE;
 static TCHAR gs_SysvolPoliciesSearchPath[MAX_PATH] = { 0 };
 static LPTSTR gs_SysvolPoliciesPath = NULL;
@@ -60,21 +63,6 @@ static DWORD gs_CurrentAceIndex = 0;
 
 /* --- PUBLIC VARIABLES ----------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
-static HANDLE FileOpenWithBackupPriv(
-    _In_ LPTSTR path,
-    _In_ BOOL useBackupPriv
-    ) {
-
-    // Actually, http://msdn.microsoft.com/en-us/library/windows/desktop/aa363858(v=vs.85).aspx :
-    // FILE_FLAG_BACKUP_SEMANTICS : You must set this flag to obtain a handle to a directory
-    // To open a directory using CreateFile, specify the FILE_FLAG_BACKUP_SEMANTICS flag as part of dwFlagsAndAttributes. Appropriate security checks still apply when this flag is used without SE_BACKUP_NAME and SE_RESTORE_NAME privileges.
-    // => So we always use this flag. (since we always open directories here)
-    UNREFERENCED_PARAMETER(useBackupPriv);
-
-    return CreateFile(path, READ_CONTROL, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, NULL);
-}
-
-
 static PACL SysvolGetGpoElementDacl(
     _In_ PLUGIN_API_TABLE const * const api,
     _In_ LPTSTR filePath
@@ -142,7 +130,7 @@ BOOL SysvolFormatSubGpoElementName(
 
     if (ptParentDn && ptSubDn) {
         size_t len = 3 + _tcslen(ptSubElement) + 1 + _tcslen(ptParentDn) + 1;
-        *ptSubDn = ApiLocalAllocCheckX(len*sizeof(TCHAR));
+        *ptSubDn = ApiHeapAllocX(gs_hHeapSysvol, (DWORD)(len*sizeof(TCHAR)));
         if (!*ptSubDn) {
             return FALSE;
         }
@@ -158,19 +146,19 @@ BOOL SysvolFormatSubGpoElementName(
 static void SysvolGetPoliciesDn(
     _In_ PLUGIN_API_TABLE const * const api
     ){
-    int size = -1;
+    int szPoliciesDn = 0;
+	size_t len = 0;
     LPTSTR domain = api->Resolver.GetDomainDn();
 
     if (!domain) {
         API_FATAL(_T("Failed to get domain DN"));
     }
-    size_t len = _tcslen(_T("CN=Policies,CN=System,")) + _tcslen(domain) + 1;
-    gs_PoliciesDn = ApiLocalAllocCheckX(len*sizeof(TCHAR));
-    size = _stprintf_s(gs_PoliciesDn, len, _T("CN=Policies,CN=System,%s"), domain);
-    if (size == -1) {
+    len = _tcslen(SYSVOL_POLICIES_SUB_DN) + _tcslen(domain) + 1;
+    gs_PoliciesDn = ApiHeapAllocX(gs_hHeapSysvol, (DWORD)(len*sizeof(TCHAR)));
+	szPoliciesDn = _stprintf_s(gs_PoliciesDn, len, _T("cn=policies,cn=system,%s"), domain);
+    if (!szPoliciesDn) {
         API_FATAL(_T("Failed to format 'policies' DN"));
     }
-    ApiFreeCheckX(domain);
 }
 
 
@@ -209,7 +197,7 @@ static BOOL SysvolGetNextDacl(
                 API_FATAL(_T("Invalid filename <%s>"), gs_CurrentFileData.cFileName);
             }
             bResult = SysvolFormatSubGpoElementName(api, gs_CurrentFileData.cFileName, gs_SysvolPoliciesPath, gs_CurrentGpoPath, gs_PoliciesDn, &gs_CurrentGpoDn);
-            strcpy_s(gs_CurrentElementPath, MAX_PATH, gs_CurrentGpoPath);
+            _tcscpy_s(gs_CurrentElementPath, MAX_PATH, gs_CurrentGpoPath);
             gs_CurrentElementDn = gs_CurrentGpoDn;
             if (!bResult) {
                 API_FATAL(_T("Failed to format GPO 'root' names"));
@@ -284,6 +272,12 @@ void PLUGIN_GENERIC_HELP(
 BOOL PLUGIN_GENERIC_INITIALIZE(
     _In_ PLUGIN_API_TABLE const * const api
     ) {
+	BOOL bResult = FALSE;
+
+	bResult = ApiHeapCreateX(&gs_hHeapSysvol, SYSVOL_HEAP_NAME, NULL);
+	if (API_FAILED(bResult)) {
+		return ERROR_VALUE;
+	}
     // Backup priv is implicitely used by FindFirst/NextFile
     gs_UseBackupPriv = api->Common.GetPluginOption(_T("usebackpriv"), FALSE) != NULL ? TRUE : FALSE;
     API_LOG(Info, _T("Accessing sysvol %s backup privilege"), gs_UseBackupPriv ? _T("using") : _T("not using"));
@@ -312,7 +306,11 @@ BOOL PLUGIN_GENERIC_INITIALIZE(
 BOOL PLUGIN_GENERIC_FINALIZE(
     _In_ PLUGIN_API_TABLE const * const api
     ) {
-    UNREFERENCED_PARAMETER(api);
+	BOOL bResult = FALSE;
+	bResult = ApiHeapDestroyX(&gs_hHeapSysvol);
+	if (API_FAILED(bResult)) {
+		return ERROR_VALUE;
+	}
     FindClose(gs_FindHandle);
     return TRUE;
 }
@@ -340,7 +338,7 @@ BOOL PLUGIN_IMPORTER_GETNEXTACE(
 
     if (!gs_CurrentDacl || gs_CurrentAceIndex >= gs_CurrentDacl->AceCount) {
         bResult = SysvolGetNextDacl(api);
-        if (!bResult) {
+        if (!bResult || !gs_CurrentDacl) {
             return FALSE; // No more DACL => No more ACE to import
         }
     }
@@ -355,13 +353,23 @@ BOOL PLUGIN_IMPORTER_GETNEXTACE(
 
     // Import the ACE
     ace->imported.source = AceFromFileSystem;
-    ace->imported.raw = ApiLocalAllocCheckX(currentAce->AceSize);
+    ace->imported.raw = ApiHeapAllocX(gs_hHeapSysvol,currentAce->AceSize);
     memcpy(ace->imported.raw, currentAce, currentAce->AceSize);
-    ace->imported.objectDn = ApiStrDupCheckX(gs_CurrentElementDn);
+    ace->imported.objectDn = ApiStrDupX(gs_hHeapSysvol,gs_CurrentElementDn);
+	CharLower(ace->imported.objectDn);
     if (!IsValidSid(api->Ace.GetTrustee(ace))) {
         API_FATAL(_T("ace does not have a valid trustee sid <%s>"), ace->imported.objectDn);
     }
     gs_CurrentAceIndex++;
 
     return TRUE;
+}
+
+void PLUGIN_IMPORTER_FREEACE(
+	_In_ PLUGIN_API_TABLE const * const api,
+	_Inout_ PIMPORTED_ACE ace
+) {
+	ApiHeapFreeX(gs_hHeapSysvol, ace->imported.objectDn);
+	ApiHeapFreeX(gs_hHeapSysvol, ace->imported.raw);
+	RtlZeroMemory(ace, sizeof(IMPORTED_ACE));
 }

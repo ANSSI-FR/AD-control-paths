@@ -4,16 +4,20 @@
 #ifndef __ACE_FILTER_H__
 #define __ACE_FILTER_H__
 
+#define UTILS_REQUIRE_GETOPT_COMPLEX
+
+
 /* --- INCLUDES ------------------------------------------------------------- */
 #include "Common.h"
 #include "Cache.h"
 #include "Plugin.h"
 #include "ImportedObjects.h"
-#include "getopt.h"
+//#include "getopt.h"
+
 
 
 /* --- DEFINES -------------------------------------------------------------- */
-#define DEFAULT_OPT_DEBUGLEVEL      "WARN"
+#define DEFAULT_OPT_DEBUGLEVEL      _T("WARN")
 #define DEFAULT_OPT_PROGRESSION     (1000000)
 
 #define PLUGIN_MAX_IMPORTERS        (3)     // at most, one for each type of imported objects : ACE, OBJ, SCH

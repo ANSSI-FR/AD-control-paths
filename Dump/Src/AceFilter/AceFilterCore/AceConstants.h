@@ -13,9 +13,9 @@
 #pragma warning(default:4201)
 
 /* --- DEFINES -------------------------------------------------------------- */
-#define ACE_REL_COUNT                           (24)
-#define SET_RELATION(ace, rel)                  SET_BIT((ace)->computed.relation, rel)
-#define HAS_RELATION(ace, rel)                  GET_BIT((ace)->computed.relation, rel)
+#define ACE_REL_COUNT                           (25)
+#define SET_RELATION(ace, rel)                  BITMAP_SET_BIT((ace)->computed.relation, rel)
+#define HAS_RELATION(ace, rel)                  BITMAP_GET_BIT((ace)->computed.relation, rel)
 
 #define ACE_TYPES_VALUES_COUNT                  (25)
 #define ACE_FLAGS_VALUES_COUNT                  (7)
@@ -29,6 +29,8 @@
 #define ACE_GENERIC_RIGHTS_MASK                 (0xF0000000)
 #define ACE_STANDARD_RIGHTS_MASK                (STANDARD_RIGHTS_ALL|ACCESS_SYSTEM_SECURITY)
 #define ACE_SPECIFIC_RIGHTS_MASK                (SPECIFIC_RIGHTS_ALL)
+
+#define ADMIN_SD_HOLDER_PARTIAL_DN  _T("cn=adminsdholder,cn=system,dc=")
 
 
 /* --- TYPES ---------------------------------------------------------------- */
@@ -49,6 +51,7 @@ typedef enum _ACE_RELATION {
     EXT_RIGHT_SEND_AS = __COUNTER__,
     EXT_RIGHT_CREATE_INBOUND_FOREST_TRUST = __COUNTER__,
     EXT_RIGHT_MIGRATE_SID_HISTORY = __COUNTER__,
+	EXT_RIGHT_ADM_PWD = __COUNTER__,
 
     VAL_WRITE_ALL = __COUNTER__,
     VAL_WRITE_SELF_MEMBERSHIP = __COUNTER__,

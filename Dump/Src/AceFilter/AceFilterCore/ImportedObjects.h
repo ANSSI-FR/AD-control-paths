@@ -74,7 +74,12 @@ cf. http://msdn.microsoft.com/en-us/library/windows/desktop/aa772285(v=vs.85).as
                                         MULTI_LINE_MACRO_END
 #define IMPORTED_FIELD_CST_CPY(d,s,f)   (d)->f = (s)->f;
 #define IMPORTED_FIELD_BUF_CPY(d,s,f,l) memcpy(&((d)->f), &((s)->f), l);
-#define IMPORTED_FIELD_DUP_CPY(d,s,f)   (d)->f = StrDupCheckX((s)->f);
+#define IMPORTED_FIELD_DUP_CPY(d,s,f)   (d)->f = UtilsHeapStrDupHelper(gs_hHeapCache,(s)->f);
+#define IMPORTED_FIELD_ARR_CPY(d,s,f,c) MULTI_LINE_MACRO_BEGIN                                        \
+                                          (d)->f = UtilsHeapAllocArrayHelper(gs_hHeapCache,LPTSTR,c); \
+                                          for (unsigned int i = 0;i<c;i++)                            \
+                                            IMPORTED_FIELD_DUP_CPY(d,s,f[i]);                         \
+                                        MULTI_LINE_MACRO_END
 
 /* --- TYPES ---------------------------------------------------------------- */
 typedef enum _ACE_SOURCE {
@@ -83,6 +88,10 @@ typedef enum _ACE_SOURCE {
     // TODO : add other sources
 } ACE_SOURCE;
 
+typedef struct _WELLKNOWN_BIGRAMS {
+	LPTSTR bigram;
+	LPTSTR rid;
+} WELLKNOWN_BIGRAMS, *WELLKNOWN_PBIGRAMS;
 
 typedef struct _IMPORTED_HEAD {
     DWORD refCount;
@@ -102,11 +111,11 @@ typedef struct _IMPORTED_SCHEMA {
 
     struct {
         struct _IMPORTED_OBJECT * object;
-        PSECURITY_DESCRIPTOR defaultSD;
     } resolved;
 
     struct {
         DWORD number;
+		PSECURITY_DESCRIPTOR defaultSD;
     } computed;
 
 #ifdef _DEBUG
@@ -125,26 +134,18 @@ typedef struct _IMPORTED_OBJECT {
     struct {
         LPTSTR dn;
         BYTE sid[SECURITY_MAX_SID_SIZE];
-        //BYTE primaryOwner[SECURITY_MAX_SID_SIZE];
-        //BYTE primaryGroup[SECURITY_MAX_SID_SIZE];
         BYTE adminCount;
 		LPTSTR *objectClassesNames;
     } imported;
 
     struct {
         PIMPORTED_SCHEMA * objectClasses;
-		PDWORD objectClassesIds;
-        //struct _IMPORTED_OBJECT * primaryOwner;
-        //struct _IMPORTED_OBJECT * primaryGroup;
     } resolved;
 
     struct {
         DWORD objectClassCount;
         DWORD sidLength;
         DWORD number;
-        //DWORD optInfoPresent;
-        //LPTSTR primaryOwnerStr;
-        //LPTSTR primaryGroupStr;
     } computed;
 
 #ifdef _DEBUG
@@ -233,45 +234,12 @@ LPTSTR ResolverGetAceTrusteeStr(
     _In_ PIMPORTED_ACE ace
     );
 
-/*
-LPTSTR ResolverGetObjectPrimaryOwnerStr(
-    _In_ PIMPORTED_OBJECT obj
-    );
-*/
-
-/*
-LPTSTR ResolverGetObjectPrimaryGroupStr(
-    _In_ PIMPORTED_OBJECT obj
-    );
-*/
-
 PIMPORTED_OBJECT  ResolverGetAceTrustee(
     _In_ PIMPORTED_ACE ace
     );
 
-PDWORD ResolverGetObjectClassesIds(
-	_In_ PIMPORTED_OBJECT obj
-	);
-
 PIMPORTED_OBJECT ResolverGetAceObject(
     _In_ PIMPORTED_ACE ace
-    );
-
-/*
-PIMPORTED_OBJECT ResolverGetObjectPrimaryOwner(
-    _In_ PIMPORTED_OBJECT obj
-    );
-*/
-
-/*
-PIMPORTED_OBJECT ResolverGetObjectPrimaryGroup(
-    _In_ PIMPORTED_OBJECT obj
-    );
-*/
-
-PIMPORTED_SCHEMA ResolverGetObjectObjectClass(
-    _In_ PIMPORTED_OBJECT obj,
-    _In_ DWORD idx
     );
 
 PSECURITY_DESCRIPTOR ResolverGetSchemaDefaultSD(
@@ -294,10 +262,6 @@ PIMPORTED_SCHEMA GetSchemaByGuid(
     _In_ GUID * guid
     );
 
-PIMPORTED_SCHEMA GetSchemaByClassid(
-    _In_ DWORD classid
-    );
-
 PIMPORTED_SCHEMA GetSchemaByDisplayName(
 	_In_ LPTSTR displayname
 	);
@@ -305,15 +269,14 @@ PIMPORTED_SCHEMA GetSchemaByDisplayName(
 LPTSTR GetDomainDn(
     );
 
+GUID *GetAdmPwdGuid(
+);
+
 void CacheActivateObjectCache(
     );
 
 void CacheActivateSchemaCache(
     );
-
-
-
-
 
 // Cache.h cannot be included here (circular inclusion), so we just declare the used functions here :
 
@@ -329,15 +292,19 @@ extern PIMPORTED_SCHEMA CacheLookupSchemaByGuid(
     _In_ GUID * guid
     );
 
-extern PIMPORTED_SCHEMA CacheLookupSchemaByClassid(
-    _In_ DWORD classid
-    );
-
 extern PIMPORTED_SCHEMA CacheLookupSchemaByDisplayName(
 	_In_ LPTSTR displayname
 	);
 
 extern LPTSTR CacheGetDomainDn(
     );
+
+extern GUID *CacheGetAdmPwdGuid(
+    );
+
+BOOL IsAceInSd(
+	_In_ PACE_HEADER pHeaderAceToCheck,
+	_In_ PSECURITY_DESCRIPTOR pSd
+);
 
 #endif // __IMPORTED_ACE_H__

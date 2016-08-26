@@ -1,16 +1,12 @@
 /* --- INCLUDES ------------------------------------------------------------- */
-#include "..\Utils\Utils.h"
 #include "..\Utils\Control.h"
-#include "..\Utils\Ldap.h"
 
 
 /* --- DEFINES -------------------------------------------------------------- */
-#define CONTROL_SYSVOL_OWNER_DEFAULT_OUTFILE    _T("control.sysvol.owner.tsv")
+#define CONTROL_SYSVOL_OWNER_DEFAULT_OUTFILE    _T("control.sysvol.owner.csv")
 #define CONTROL_SYSVOL_OWNER_KEYWORD            _T("SYSVOL_OWNER")
-#define LDAP_FILTER_GPO                         _T("(") ## NONE(LDAP_ATTR_OBJECT_CLASS) ## _T("=groupPolicyContainer)")
 
 #define SYSVOL_DEFAULT_USE_BACKUP_PRIV          FALSE
-#define STR_GUID_LEN                            36
 
 
 /* --- TYPES ---------------------------------------------------------------- */ 
@@ -79,7 +75,7 @@ BOOL SysvolFormatSubGpoElementName(
 }
 
 BOOL SysvolWriteOwner(
-    _In_ HANDLE hOutfile,
+    _In_ CSV_HANDLE hOutfile,
     _In_ PTCHAR ptPath,
     _In_ PTCHAR ptDnSlave,
     _In_ PTCHAR ptKeyword
@@ -111,8 +107,8 @@ BOOL SysvolWriteOwner(
 }
 
 static void CallbackLdapGpoOwner(
-    _In_ HANDLE hOutfile,
-    _Inout_ PLDAP_RETRIEVED_DATA pLdapRetreivedData
+	_In_ CSV_HANDLE hOutfile,
+	_Inout_ LPTSTR *tokens
     ) {
 
     /*
@@ -123,13 +119,22 @@ static void CallbackLdapGpoOwner(
     */
 
     BOOL bResult = FALSE;
-    PTCHAR ptGpoDn = pLdapRetreivedData->tDN;
-    PTCHAR ptGpoCn = (PTCHAR)pLdapRetreivedData->ppbData[0];
+    PTCHAR ptGpoDn = NULL;
+    PTCHAR ptGpoCn = NULL;
     PTCHAR ptGpoDnUser = NULL;
     PTCHAR ptGpoDnMachine = NULL;
     TCHAR tGpoPath[MAX_PATH] = { 0 };
     TCHAR tGpoPathUser[MAX_PATH] = { 0 };
     TCHAR tGpoPathMachine[MAX_PATH] = { 0 };
+
+	if (!tokens[LdpListObjectClass])
+		return;
+
+	if (_tcscmp(tokens[LdpListObjectClass], _T("top;container;grouppolicycontainer")))
+		return;
+
+	ptGpoDn = tokens[LdpListDn];
+	ptGpoCn = tokens[LdpListCN];
 
     bResult = SysvolParseGpoName(sSysvolOptions.ptSysvolPoliciesPath, ptGpoCn, tGpoPath);
     if (!bResult) {
@@ -148,6 +153,9 @@ static void CallbackLdapGpoOwner(
         LOG(Err, _T("Failed to format GPO sub element 'User'"));
         return;
     }
+	CharLower(ptGpoDn);
+	CharLower(ptGpoDnUser);
+	CharLower(ptGpoDnMachine);
 
     SysvolWriteOwner(hOutfile, tGpoPath, ptGpoDn, CONTROL_SYSVOL_OWNER_KEYWORD);
     SysvolWriteOwner(hOutfile, tGpoPathUser, ptGpoDnUser, CONTROL_SYSVOL_OWNER_KEYWORD);
@@ -164,9 +172,7 @@ static void CallbackLdapGpoOwner(
 static void SysvolUsage(
     _In_ PTCHAR  progName
     ) {
-    LOG(Bypass, _T("Usage : %s <ldap options> <general options> <sysvol options>"), progName);
-    LOG(Bypass, _T("> LDAP options :"));
-    LdapUsage();
+    LOG(Bypass, _T("Usage : %s <general options> <sysvol options>"), progName);
     LOG(Bypass, _T("> general options :"));
     ControlUsage();
     LOG(Bypass, _T("> Sysvol options :"));
@@ -184,7 +190,7 @@ void SysvolParseOptions(
     int curropt = 0;
 
     pSysvolOptions->bUseBackupPriv = SYSVOL_DEFAULT_USE_BACKUP_PRIV;
-    optreset = 1;
+//    optreset = 1;
     optind = 1;
     opterr = 0;
 
@@ -204,17 +210,25 @@ void SysvolParseOptions(
 
 
 /* --- PUBLIC FUNCTIONS ----------------------------------------------------- */
-int main(
-    _In_ int argc,
-    _In_ TCHAR * argv[]
-    ) {
-    RtlZeroMemory(&sSysvolOptions, sizeof(SYSVOL_OPTIONS));
-    SysvolParseOptions(&sSysvolOptions, argc, argv);
+int _tmain(
+	_In_ int argc,
+	_In_ TCHAR * argv[]
+) {
+	PTCHAR outfileHeader[OUTFILE_TOKEN_COUNT] = CONTROL_OUTFILE_HEADER;
 
-    if (!sSysvolOptions.ptSysvolPoliciesPath) {
-        SysvolUsage(argv[0]);
-    }
+	RtlZeroMemory(&sSysvolOptions, sizeof(SYSVOL_OPTIONS));
+	SysvolParseOptions(&sSysvolOptions, argc, argv);
+	if (!sSysvolOptions.ptSysvolPoliciesPath) {
+		SysvolUsage(argv[0]);
+	}
+	PTCHAR ptName = _T("SIDCACHE");
+	CacheCreate(
+		&ppCache,
+		ptName,
+		pfnCompare
+	);
+	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackBuildSidCache, SysvolUsage);
+	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackLdapGpoOwner, SysvolUsage);
 
-    ControlMainForeachLdapResult(argc, argv, CONTROL_SYSVOL_OWNER_DEFAULT_OUTFILE, LDAP_FILTER_GPO, LDAP_ATTR_COMMONNAME, NULL, CallbackLdapGpoOwner, SysvolUsage);
-    return EXIT_SUCCESS;
+	return EXIT_SUCCESS;
 }

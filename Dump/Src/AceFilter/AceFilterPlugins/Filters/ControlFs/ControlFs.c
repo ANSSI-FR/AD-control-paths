@@ -106,10 +106,9 @@ BOOL PLUGIN_FILTER_FILTERACE(
 	if (!IS_ALLOWED_ACE(ace->imported.raw)) {
 		for (i = 0; i < ACE_REL_COUNT; i++) {
 			if (HAS_RELATION(ace, i)) {
-				API_LOG(Succ, _T("<%s> control is limited by a DENY %s ACE on object <%s>"), api->Resolver.ResolverGetAceTrusteeStr(ace), api->Ace.GetAceRelationStr(i), api->Resolver.ResolverGetAceObject(ace)->imported.dn);
+				API_LOG(Dbg, _T("<%s> control is limited by a DENY %s ACE on object <%s>"), api->Resolver.ResolverGetAceTrusteeStr(ace), api->Ace.GetAceRelationStr(i), api->Resolver.ResolverGetAceObject(ace)->imported.dn);
 			}
 		}
-		return FALSE;
 	}
 
     for (i = 0; i < ACE_REL_COUNT; i++) {

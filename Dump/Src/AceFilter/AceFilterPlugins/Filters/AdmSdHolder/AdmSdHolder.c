@@ -29,20 +29,19 @@ PLUGIN_DECLARE_REQUIREMENT(PLUGIN_REQUIRE_DN_RESOLUTION);
 void PLUGIN_GENERIC_HELP(
     _In_ PLUGIN_API_TABLE const * const api
     ) {
-    API_LOG(Bypass, _T("This filter causes the construction of the AdminSdHolder's SD, wich is done by running"));
+    API_LOG(Bypass, _T("This filter causes the construction of the AdminSdHolder's SD, which is done by running"));
     API_LOG(Bypass, _T("through all ACEs before filtering. Thus, the processing time is nearly doubled."));
 }
-
 
 BOOL PLUGIN_FILTER_FILTERACE(
     _In_ PLUGIN_API_TABLE const * const api,
     _Inout_ PIMPORTED_ACE ace
     ) {
-    PIMPORTED_OBJECT object = api->Resolver.ResolverGetAceObject(ace);
-
-    if (object->imported.adminCount == 1) {
-        return !api->Ace.IsInAdminSdHolder(ace);
+	PIMPORTED_OBJECT object = NULL;
+	object = api->Resolver.ResolverGetAceObject(ace);
+	
+    if (object && object->imported.adminCount) {
+		return !api->Ace.IsInAdminSdHolder(ace);
     }
-
     return TRUE;
 }

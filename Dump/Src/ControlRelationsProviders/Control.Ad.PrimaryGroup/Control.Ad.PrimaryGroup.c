@@ -1,56 +1,134 @@
 /* --- INCLUDES ------------------------------------------------------------- */
-#include "..\Utils\Utils.h"
 #include "..\Utils\Control.h"
-#include "..\Utils\Ldap.h"
+
 
 
 /* --- DEFINES -------------------------------------------------------------- */
-#define CONTROL_PRIMARY_DEFAULT_OUTFILE _T("control.ad.primarygroup.tsv")
+#define CONTROL_PRIMARY_DEFAULT_OUTFILE _T("control.ad.primarygroup.csv")
 #define CONTROL_PRIMARY_KEYWORD         _T("PRIMARY_GROUP")
-#define LDAP_FILTER_PRIMARY             _T("(") ## NONE(LDAP_ATTR_PRIMARYGROUPID) ## _T("=*)")
 
 
+/* --- TYPES ---------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 /* --- PUBLIC VARIABLES ----------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
-static void CallbackPrimaryGroup(
-    _In_ HANDLE hOutfile,
-    _Inout_ PLDAP_RETRIEVED_DATA pLdapRetreivedData
-    ) {
-    BOOL bResult = FALSE;
-    DWORD dwPrimaryGroupRid = 0;
-    DWORD dwDataSize = 0;
-    PTCHAR ptDnPrimaryGroup = NULL;
+static void _Function_class_(FN_CONTROL_CALLBACK_RESULT) CallbackPrimaryGroup(
+	_In_ CSV_HANDLE hOutfile,
+	_Inout_ LPTSTR *tokens
+) {
+	BOOL bResult = FALSE;
+	CACHE_OBJECT_BY_RID searched = { 0 };
+	PCACHE_OBJECT_BY_RID returned = NULL;
 
-    for (DWORD i = 0; i < pLdapRetreivedData->dwElementCount; i++) {
-        dwDataSize = pLdapRetreivedData->pdwDataSize[i];
-        for (DWORD j = 0; j < dwDataSize; j++) {
-            dwPrimaryGroupRid += ((pLdapRetreivedData->ppbData[i][j] & 0x0F) << (((dwDataSize - 1) - j) * 4)); // wtf
-        }
-        LOG(Dbg, SUB_LOG(_T("- %u: %x")), i, dwPrimaryGroupRid);
+	if (STR_EMPTY(tokens[LdpListPrimaryGroupID]))
+		return;
 
-        bResult = LdapResolveRid(dwPrimaryGroupRid, &ptDnPrimaryGroup);
-        if (!bResult) {
-            LOG(Warn, _T("Cannot resolve primary group RID <%x>"), dwPrimaryGroupRid);
-            // Do not return here, since unresolvable domain SID could exist
-        }
-        LOG(Dbg, SUB_LOG(_T("- %u: %s")), i, ptDnPrimaryGroup);
+	searched.rid = tokens[LdpListPrimaryGroupID];
 
-        bResult = ControlWriteOutline(hOutfile, pLdapRetreivedData->tDN, ptDnPrimaryGroup, CONTROL_PRIMARY_KEYWORD);
-        if (!bResult) {
-            LOG(Err, _T("Cannot write outline for <%s>"), pLdapRetreivedData->tDN);
-        }
+	bResult = CacheEntryLookup(
+		ppCache,
+		(PVOID)&searched,
+		&returned
+	);
 
-        free(ptDnPrimaryGroup);
-    }
+	if (!returned) {
+		LOG(Dbg, _T("cannot find object-by-rid entry for <%d>"), tokens[LdpListPrimaryGroupID]);
+		return;
+	}
+
+	bResult = ControlWriteOutline(hOutfile, tokens[LdpListDn], returned->dn, CONTROL_PRIMARY_KEYWORD);
+	if (!bResult) {
+		LOG(Err, _T("Cannot write outline for <%s>"), tokens[LdpListDn]);
+	}
+	return;
 }
 
+static void CallbackBuildRidCache(
+	_In_ CSV_HANDLE hOutfile,
+	_Inout_ LPTSTR *tokens
+) {
+	UNREFERENCED_PARAMETER(hOutfile);
+
+	BOOL bResult = FALSE;
+	CACHE_OBJECT_BY_RID cacheEntry = { 0 };
+	PCACHE_OBJECT_BY_RID inserted = NULL;
+	BOOL newElement = FALSE;
+	PSID pSid = NULL;
+	UCHAR subAuthorityCount;
+	DWORD rid;
+
+	if (STR_EMPTY(tokens[LdpListObjectClass]))
+		return;
+
+	if (_tcscmp(tokens[LdpListObjectClass], _T("top;person;organizationalPerson;user;inetOrgPerson")) && _tcscmp(tokens[LdpListObjectClass], _T("top;group"))
+		&& _tcscmp(tokens[LdpListObjectClass], _T("top;person;organizationalPerson;user;computer")))
+		return;
+
+	if (STR_EMPTY(tokens[LdpListObjectSid]))
+		return;
+
+	LOG(Dbg, _T("Object <%s> has hex SID <%s>"), tokens[LdpListDn], tokens[LdpListObjectSid]);
+
+	pSid = (PSID)malloc(SECURITY_MAX_SID_SIZE);
+	if (!pSid)
+		FATAL(_T("Could not allocate SID <%s>"), tokens[LdpListObjectSid]);
+
+	if (_tcslen(tokens[LdpListObjectSid]) / 2 > SECURITY_MAX_SID_SIZE) {
+		FATAL(_T("Hex sid <%s> too long"), tokens[LdpListObjectSid]);
+	}
+	Unhexify(pSid, tokens[LdpListObjectSid]);
+
+
+	bResult = IsValidSid(pSid);
+	if (!bResult) {
+		FATAL(_T("Invalid SID <%s> for <%s>"), tokens[LdpListObjectSid], tokens[LdpListDn]);
+	}
+
+	subAuthorityCount = *GetSidSubAuthorityCount(pSid);
+	rid = *GetSidSubAuthority(pSid, subAuthorityCount - 1);
+	free(pSid);
+	// Do not free as they will be inserted in the cache
+	cacheEntry.dn = (LPTSTR)malloc((_tcslen(tokens[LdpListDn]) + 1) * sizeof(TCHAR));
+	cacheEntry.rid = (LPTSTR)malloc(16);
+	if (!cacheEntry.dn || !cacheEntry.rid)
+		FATAL(_T("Could not allocate dn/rid <%s>"), tokens[LdpListDn]);
+
+	_tcscpy_s(cacheEntry.dn, _tcslen(tokens[LdpListDn]) + 1, tokens[LdpListDn]);
+	_itot_s(rid, cacheEntry.rid, 8, 10);
+
+	CacheEntryInsert(
+		ppCache,
+		(PVOID)&cacheEntry,
+		sizeof(CACHE_OBJECT_BY_RID),
+		&inserted,
+		&newElement
+	);
+
+	if (!inserted) {
+		LOG(Err, _T("cannot insert new object-by-rid cache entry <%s>"), tokens[LdpListDn]);
+	}
+	else if (!newElement) {
+		LOG(Dbg, _T("object-by-rid cache entry is not new <%s>"), tokens[LdpListDn]);
+	}
+
+	return;
+}
 
 /* --- PUBLIC FUNCTIONS ----------------------------------------------------- */
-int main(
-    _In_ int argc,
-    _In_ TCHAR * argv[]
-    ) {
-    ControlMainForeachLdapResult(argc, argv, CONTROL_PRIMARY_DEFAULT_OUTFILE, LDAP_FILTER_PRIMARY, LDAP_ATTR_PRIMARYGROUPID, NULL, CallbackPrimaryGroup, GenericUsage);
-    return EXIT_SUCCESS;
+int _tmain(
+	_In_ int argc,
+	_In_ TCHAR * argv[]
+) {
+	PTCHAR outfileHeader[OUTFILE_TOKEN_COUNT] = CONTROL_OUTFILE_HEADER;
+	PTCHAR ptName = _T("RIDCACHE");
+
+	CacheCreate(
+		&ppCache,
+		ptName,
+		pfnCompareRid
+	);
+
+	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackBuildRidCache, GenericUsage);
+	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackPrimaryGroup, GenericUsage);
+	return EXIT_SUCCESS;
 }

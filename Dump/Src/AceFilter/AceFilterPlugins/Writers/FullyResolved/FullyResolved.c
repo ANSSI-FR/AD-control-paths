@@ -8,7 +8,9 @@
 /* --- PLUGIN DECLARATIONS -------------------------------------------------- */
 #define PLUGIN_NAME         _T("FullyResolved")
 #define PLUGIN_KEYWORD      _T("FRE")
-#define PLUGIN_DESCRIPTION  _T("Outputs ACE with a maximum of resolved information");
+#define PLUGIN_DESCRIPTION  _T("Outputs ACE with a maximum of resolved information")
+#define FULLYRESOLVED_HEAP_NAME _T("FRHEAP")
+
 
 // Plugin informations
 PLUGIN_DECLARE_NAME;
@@ -24,7 +26,6 @@ PLUGIN_DECLARE_WRITEACE;
 // Plugin requirements
 PLUGIN_DECLARE_REQUIREMENT(PLUGIN_REQUIRE_DN_RESOLUTION);
 PLUGIN_DECLARE_REQUIREMENT(PLUGIN_REQUIRE_SID_RESOLUTION);
-PLUGIN_DECLARE_REQUIREMENT(PLUGIN_REQUIRE_CLASSID_RESOLUTION);
 PLUGIN_DECLARE_REQUIREMENT(PLUGIN_REQUIRE_GUID_RESOLUTION);
 PLUGIN_DECLARE_REQUIREMENT(PLUGIN_REQUIRE_DISPLAYNAME_RESOLUTION);
 PLUGIN_DECLARE_REQUIREMENT(PLUGIN_REQUIRE_ADMINSDHOLDER_SD);
@@ -33,70 +34,94 @@ PLUGIN_DECLARE_REQUIREMENT(PLUGIN_REQUIRE_ADMINSDHOLDER_SD);
 /* --- DEFINES -------------------------------------------------------------- */
 #define DEFAULT_FRE_OUTFILE                 _T("freout.tsv")
 //#define FRE_OUTFILE_HEADER                  _T("Dn\tPrimaryOwnerSid\tPrimaryOwnerResolved\tPrimaryGroupSid\tPrimaryGroupResolved\tObjectClasses\tObjectClassesResolved\tAdminCount\tTrustee\tTrusteeResolved\tAceType\tAceTypeResolved\tAceFlags\tAceFlagsResolved\tAcessMask\tAccessMaskGeneric\tAccessMaskStandard\tAccessMaskSpecific\tObjectFlags\tObjectFlagsResolved\tObjectType\tObjectTypeResolved\tInheritedObjectType\tInheritedObjectTypeResolved\tDefaultFrom\n")
-#define FRE_OUTFILE_HEADER                  _T("Dn\tObjectClasses\tObjectClassesResolved\tAdminCount\tTrustee\tTrusteeResolved\tAceType\tAceTypeResolved\tAceFlags\tAceFlagsResolved\tAcessMask\tAccessMaskGeneric\tAccessMaskStandard\tAccessMaskSpecific\tObjectFlags\tObjectFlagsResolved\tObjectType\tObjectTypeResolved\tInheritedObjectType\tInheritedObjectTypeResolved\tDefaultFrom\n")
+#define FRE_OUTFILE_HEADER                  {_T("dn"),_T("adminCount"),_T("trustee"),_T("trusteeResolved"),_T("aceType"),_T("aceTypeResolved"),_T("aceFlags"),_T("aceFlagsResolved"),_T("accessMask"),_T("accessMaskGeneric"),_T("accessMaskStandard"),_T("accessMaskSpecific"),_T("objectFlags"),_T("objectFlagsResolved"),_T("objectType"),_T("objectTypeResolved"),_T("inheritedObjectType"),_T("inheritedObjectTypeResolved"),_T("defaultFrom")}
+#define FRE_OUTFILE_HEADER_COUNT            (19)
 
+
+/* --- TYPES ---------------------------------------------------------------- */
+typedef enum _FR_FIELD_NAME {
+	dn = 0,
+	adminCount,
+	trustee,
+	trusteeResolved,
+	aceType,
+	aceTypeResolved,
+	aceFlags,
+	aceFlagsResolved,
+	accessMask,
+	accessMaskGeneric,
+	accessMaskStandard,
+	accessMaskSpecific,
+	objectFlags,
+	objectFlagsResolved,
+	objectType,
+	objectTypeResolved,
+	inheritedObjectType,
+	inheritedObjectTypeResolved,
+	defaultFrom,
+} FR_FIELD_NAME, *PFR_FIELD_NAME;
 
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
+static PUTILS_HEAP gs_hHeapFullyResolved = INVALID_HANDLE_VALUE;
 static LPTSTR gs_outfileName = NULL;
-static HANDLE gs_hOutfile = INVALID_HANDLE_VALUE;
-
+static CSV_HANDLE gs_hOutfile = 0;
 
 /* --- PUBLIC VARIABLES ----------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 void StrToOutfile(
-    _In_ PLUGIN_API_TABLE const * const api,
-    _In_opt_ LPTSTR str,
-    _In_ BOOL end
+	_Inout_ LPTSTR ** nextRecord,
+	_In_ const FR_FIELD_NAME position,
+    _In_opt_ LPTSTR str
     ) {
-    BOOL bResult = FALSE;
-    DWORD written = 0;
-
-    if (!STR_EMPTY(str)) {
-        bResult = WriteFile(gs_hOutfile, str, (DWORD)_tcslen(str), &written, NULL);
-        if (!bResult) {
-            API_LOG(Err, _T("Failed to write <%s> to outfile : <%u>"), str, GetLastError());
-        }
+	if (!STR_EMPTY(str)) {
+		(*nextRecord)[position] = str;
     }
-    WriteFile(gs_hOutfile, end ? "\n" : "\t", 1, &written, NULL);
+	else {
+		(*nextRecord)[position] = _T("<empty>");
+	}
 }
 
 void IntToOutfile(
     _In_ PLUGIN_API_TABLE const * const api,
+	_Inout_ LPTSTR ** nextRecord,
+	_In_ const FR_FIELD_NAME position,
     _In_ DWORD value,
-    _In_ BOOL hex,
-    _In_ BOOL end
+    _In_ BOOL hex
     ) {
+	UNREFERENCED_PARAMETER(api);
     TCHAR strvalue[10 + 1] = { 0 }; // hex:0x + 8, dec:10
     _sntprintf_s(strvalue, _countof(strvalue), 10, hex ? _T("%#x") : _T("%u"), value);
-    StrToOutfile(api, strvalue, end);
+    StrToOutfile(nextRecord, position, strvalue);
 }
 
 void EnumToOutfile(
     _In_ PLUGIN_API_TABLE const * const api,
+	_Inout_ LPTSTR ** nextRecord,
+	_In_ const FR_FIELD_NAME position,
     _In_ DWORD value,
     _In_ NUMERIC_CONSTANT const * const values,
-    _In_ DWORD count,
-    _In_ BOOL end
+    _In_ DWORD count
     ) {
     DWORD i = 0;
 
     for (i = 0; i < count; i++) {
         if (value == values[i].value) {
-            StrToOutfile(api, values[i].name, end);
+            StrToOutfile(nextRecord, position, values[i].name);
             return;
         }
     }
 
     API_LOG(Err, _T("Unknow enum value %u"), value);
-    StrToOutfile(api, _T("<Error>"), end);
+    StrToOutfile(nextRecord, position, _T("<Error>"));
 }
 
 void FlagsToOutfile(
     _In_ PLUGIN_API_TABLE const * const api,
+	_Inout_ LPTSTR **nextRecord,
+	_In_ const FR_FIELD_NAME position,
     _In_ DWORD mask,
     _In_ NUMERIC_CONSTANT const * const flags,
-    _In_ DWORD count,
-    _In_ BOOL end
+    _In_ DWORD count
     ) {
     DWORD i = 0, n = 0;
     size_t len = 0;
@@ -108,8 +133,7 @@ void FlagsToOutfile(
         }
     }
 
-    str = ApiLocalAllocCheckX(len);
-
+    str = ApiHeapAllocX(gs_hHeapFullyResolved,(DWORD)(len * sizeof(TCHAR)));
     for (i = 0; i < count; i++) {
         if ((mask & flags[i].value) > 0) {
             if (n > 0) {
@@ -119,52 +143,45 @@ void FlagsToOutfile(
             n++;
         }
     }
-
-    StrToOutfile(api, str, end);
-    ApiLocalFreeCheckX(str);
+    StrToOutfile(nextRecord, position, str);
 }
 
 void SidToOutfile(
     _In_ PLUGIN_API_TABLE const * const api,
-    _In_ PSID sid,
-    _In_ BOOL end
+	_Inout_ LPTSTR ** nextRecord,
+	_In_ const FR_FIELD_NAME position,
+    _In_ PSID sid
     ) {
     LPTSTR strsid = NULL;
     BOOL bResult = ConvertSidToStringSid(sid, &strsid);
     if (!bResult) {
         API_LOG(Err, _T("Failed to stringify SID : <%u>"), GetLastError());
-        StrToOutfile(api, _T("<Error>"), end);
+        StrToOutfile(nextRecord, position, _T("<Error>"));
         return;
     }
-    StrToOutfile(api, strsid, end);
-    LocalFree(strsid);
+    StrToOutfile(nextRecord, position, strsid);
 }
 
 void GuidToOutfile(
     _In_ PLUGIN_API_TABLE const * const api,
-    _In_ GUID * guid,
-    _In_ BOOL end
+	_Inout_ LPTSTR ** nextRecord,
+	_In_ const FR_FIELD_NAME position,
+    _In_ GUID * guid
     ) {
     LPOLESTR str = NULL;
     HRESULT hr = StringFromCLSID(guid, &str);
     if (hr == S_OK) {
-#ifdef _UNICODE
-        StrToOutfile(api, str, end);
-#else
-        size_t n = 0;
-        CHAR converted[GUID_STR_SIZE_NULL] = { 0 };
-        wcstombs_s(&n, converted, GUID_STR_SIZE_NULL, str, GUID_STR_SIZE_NULL - 1);
-        StrToOutfile(api, converted, FALSE);
-#endif
-        CoTaskMemFree(str);
+
+        StrToOutfile(nextRecord, position, str);
+        //CoTaskMemFree(str);
 
         PIMPORTED_SCHEMA schema = api->Resolver.GetSchemaByGuid(guid);
-        StrToOutfile(api, schema ? schema->imported.dn : NULL, end);
+        StrToOutfile(nextRecord, position+1, schema ? schema->imported.dn : NULL);
     }
     else {
         API_LOG(Err, _T("Failed to stringify GUID"));
-        StrToOutfile(api, _T("<Error>"), end);
-        StrToOutfile(api, _T("<Error>"), end);
+        StrToOutfile(nextRecord, position, _T("<Error>"));
+        StrToOutfile(nextRecord, position+1, _T("<Error>"));
     }
 }
 
@@ -178,8 +195,13 @@ void PLUGIN_GENERIC_HELP(
 BOOL PLUGIN_GENERIC_INITIALIZE(
     _In_ PLUGIN_API_TABLE const * const api
     ) {
-    DWORD dwWritten = 0;
     BOOL bResult = FALSE;
+	PTCHAR pptAttrsListForCsv[FRE_OUTFILE_HEADER_COUNT] = FRE_OUTFILE_HEADER;
+
+	bResult = ApiHeapCreateX(&gs_hHeapFullyResolved, FULLYRESOLVED_HEAP_NAME, NULL);
+	if (API_FAILED(bResult)) {
+		return ERROR_VALUE;
+	}
 
     gs_outfileName = api->Common.GetPluginOption(_T("freout"), FALSE);
     if (!gs_outfileName) {
@@ -187,26 +209,28 @@ BOOL PLUGIN_GENERIC_INITIALIZE(
     }
     API_LOG(Info, _T("Outfile is <%s>"), gs_outfileName);
 
-
-    gs_hOutfile = CreateFile(gs_outfileName, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL | FILE_ATTRIBUTE_TEMPORARY, NULL);
-    if (gs_hOutfile == INVALID_HANDLE_VALUE) {
-        API_FATAL(_T("Failed to create outfile <%s> : <%u>"), gs_outfileName, GetLastError());
-    }
-    bResult = WriteFile(gs_hOutfile, FRE_OUTFILE_HEADER, (DWORD)_tcslen(FRE_OUTFILE_HEADER), &dwWritten, NULL);
-    if (!bResult) {
-        API_FATAL(_T("Failed to write header to outfile <%s> : <%u>"), gs_outfileName, GetLastError());
-    }
-
+	bResult = api->InputCsv.CsvOpenWrite(gs_outfileName, FRE_OUTFILE_HEADER_COUNT, pptAttrsListForCsv, &gs_hOutfile);
+	if (!bResult) {
+		API_FATAL(_T("Failed to open CSV outfile <%s>: <err:%#08x>"), gs_outfileName, api->InputCsv.CsvGetLastError(gs_hOutfile));
+	}
     return TRUE;
 }
 
 BOOL PLUGIN_GENERIC_FINALIZE(
     _In_ PLUGIN_API_TABLE const * const api
     ) {
-    if (!CloseHandle(gs_hOutfile)) {
-        API_LOG(Err, _T("Failed to close outfile handle : <%u>"), GetLastError());
-        return FALSE;
-    }
+	BOOL bResult = FALSE;
+
+	bResult = api->InputCsv.CsvClose(&gs_hOutfile);
+	if (API_FAILED(bResult)) {
+		API_FATAL(_T("Failed to close CSV outfile <%s>: <err:%#08x>"), gs_outfileName, api->InputCsv.CsvGetLastError(gs_hOutfile));
+	}
+
+	bResult = ApiHeapDestroyX(&gs_hHeapFullyResolved);
+	if (API_FAILED(bResult)) {
+		API_LOG(Err, _T("Failed to destroy heap: <%u>"), GetLastError());
+		return ERROR_VALUE;
+	}
     return TRUE;
 }
 
@@ -219,7 +243,11 @@ BOOL PLUGIN_WRITER_WRITEACE(
     /********************\
     | Object information |
     \********************/
-    PIMPORTED_OBJECT obj = api->Resolver.ResolverGetAceObject(ace);
+	PIMPORTED_OBJECT obj = NULL;
+	LPTSTR *nextRecord = { 0 };
+
+	nextRecord = ApiHeapAllocX(gs_hHeapFullyResolved, FRE_OUTFILE_HEADER_COUNT * sizeof(LPTSTR));
+	obj = api->Resolver.ResolverGetAceObject(ace);
     if (!obj) {
         API_LOG(Err, _T("Cannot lookup object <%s> for ace <%u>. Skipping."), ace->imported.objectDn, ace->computed.number);
         return FALSE;
@@ -228,101 +256,14 @@ BOOL PLUGIN_WRITER_WRITEACE(
     //
     // Dn
     //
-    StrToOutfile(api, obj->imported.dn, FALSE);
+    StrToOutfile(&nextRecord, dn, obj->imported.dn);
 
-    //
-    // PrimaryOwnerSid, PrimaryOwnerResolved
-    //
-    /*
-    if (obj->imported.primaryOwner) {
-    //DBG
-    API_LOG(Dbg, _T("- owner <%u>"), IsValidSid(obj->imported.primaryOwner));
-    //DBG
-    SidToOutfile(api, obj->imported.primaryOwner, FALSE);
-    StrToOutfile(api, api->Resolver.ResolverGetObjectPrimaryOwnerStr(obj), FALSE);
-    }
-    else {
-    StrToOutfile(api, NULL, FALSE);
-    StrToOutfile(api, NULL, FALSE);
-    }
-    */
-
-    //
-    // PrimaryGroupSid, PrimaryGroupResolved
-    //
-    /*
-    if (obj->imported.primaryGroup) {
-    //DBG
-    API_LOG(Dbg, _T("- group <%u>"), IsValidSid(obj->imported.primaryGroup));
-    //DBG
-    SidToOutfile(api, obj->imported.primaryGroup, FALSE);
-    StrToOutfile(api, api->Resolver.ResolverGetObjectPrimaryGroupStr(obj), FALSE);
-    }
-    else {
-    StrToOutfile(api, NULL, FALSE);
-    StrToOutfile(api, NULL, FALSE);
-    }
-    */
-
-    //
-    // ObjectClasses, ObjectClassesResolved
-    //
-
-    // TODO : poorly written...
-    if (obj->computed.objectClassCount > 0) {
-        DWORD i = 0;
-        size_t size = obj->computed.objectClassCount * (8 + 1);
-        int ret = 0, written = 0;
-        LPTSTR classIds = ApiLocalAllocCheckX(size);
-
-        ret = _sntprintf_s(classIds, size, size - 1, _T("%08x"), obj->resolved.objectClassesIds[0]);
-        if (ret != -1) {
-            written = ret;
-            for (i = 1; i < obj->computed.objectClassCount; i++) {
-                ret = _sntprintf_s(classIds + written, size - written, size - written - 1, _T(",%08x"), obj->resolved.objectClassesIds[i]);
-                if (ret == -1) {
-                    break;
-                }
-                written += ret;
-            }
-        }
-        StrToOutfile(api, classIds, FALSE);
-        ApiLocalFreeCheckX(classIds);
-        classIds = NULL;
-
-        LPTSTR className = NULL, classDn = NULL, ctx = NULL;
-        PIMPORTED_SCHEMA schemaClass = NULL;
-        DWORD bytesWritten = 0;
-        written = 0;
-        for (i = 0; i < obj->computed.objectClassCount; i++) {
-            classDn = className = ctx = NULL;
-            schemaClass = api->Resolver.ResolverGetObjectObjectClass(obj, i);
-            if (schemaClass) {
-                classDn = ApiStrDupCheckX(schemaClass->imported.dn);
-                api->Common.StrNextToken(classDn + 3, _T(","), &ctx, &className);
-            }
-            else {
-                API_LOG(Err, _T("Failed to lookup class <%u/%u> for <%s>"), i + 1, obj->computed.objectClassCount, obj->imported.dn);
-                className = _T("<Error>");
-            }
-            if (written > 0) {
-                WriteFile(gs_hOutfile, _T(","), (DWORD)_tcslen(_T(",")), (PDWORD)&bytesWritten, NULL);
-            }
-            WriteFile(gs_hOutfile, className, (DWORD)_tcslen(className), (PDWORD)&bytesWritten, NULL);
-            ApiFreeCheckX(classDn);
-            written++;
-        }
-        StrToOutfile(api, NULL, FALSE);
-    }
-    else {
-        StrToOutfile(api, NULL, FALSE);
-        StrToOutfile(api, NULL, FALSE);
-    }
+    // TODO : ObjectClass
 
     //
     // AdminCount
     //
-    IntToOutfile(api, obj->imported.adminCount, FALSE, FALSE);
+    IntToOutfile(api, &nextRecord, adminCount, obj->imported.adminCount, FALSE);
 
 
     /*****************\
@@ -332,32 +273,32 @@ BOOL PLUGIN_WRITER_WRITEACE(
     //
     // Trustee,TrusteeResolved
     //
-    SidToOutfile(api, api->Ace.GetTrustee(ace), FALSE);
-    StrToOutfile(api, api->Resolver.ResolverGetAceTrusteeStr(ace), FALSE);
+    SidToOutfile(api, &nextRecord, trustee, api->Ace.GetTrustee(ace));
+    StrToOutfile(&nextRecord, trusteeResolved, api->Resolver.ResolverGetAceTrusteeStr(ace));
 
     //
     // AceType, AceTypeResolved
     //
-    IntToOutfile(api, ace->imported.raw->AceType, TRUE, FALSE);
-    EnumToOutfile(api, ace->imported.raw->AceType, gc_AceTypeValues, ARRAY_COUNT(gc_AceTypeValues), FALSE);
+    IntToOutfile(api, &nextRecord, aceType, ace->imported.raw->AceType, TRUE);
+    EnumToOutfile(api, &nextRecord, aceTypeResolved, ace->imported.raw->AceType, gc_AceTypeValues, ARRAY_COUNT(gc_AceTypeValues));
 
     //
     // AceFlags, AceFlagsResolved
     //
-    BYTE aceFlags = ace->imported.raw->AceFlags;
-    IntToOutfile(api, aceFlags, TRUE, FALSE);
-    FlagsToOutfile(api, aceFlags, gc_AceFlagsValues, ARRAY_COUNT(gc_AceFlagsValues), FALSE);
+    BYTE aceFlagsByte = ace->imported.raw->AceFlags;
+    IntToOutfile(api, &nextRecord, aceFlags, aceFlagsByte, TRUE);
+    FlagsToOutfile(api, &nextRecord, aceFlagsResolved, aceFlagsByte, gc_AceFlagsValues, ARRAY_COUNT(gc_AceFlagsValues));
 
     //
     // AcessMask, AccessMaskGeneric, AccessMaskStandard, AccessMaskSpecific
     //
-    DWORD accessMask = api->Ace.GetAccessMask(ace);
-    IntToOutfile(api, accessMask, TRUE, FALSE);
-    FlagsToOutfile(api, accessMask & ACE_GENERIC_RIGHTS_MASK, gc_AceGenericAccessMaskValues, ARRAY_COUNT(gc_AceGenericAccessMaskValues), FALSE);
-    FlagsToOutfile(api, accessMask & ACE_STANDARD_RIGHTS_MASK, gc_AceStandardAccessMaskValues, ARRAY_COUNT(gc_AceStandardAccessMaskValues), FALSE);
+    DWORD dwAccessMask = api->Ace.GetAccessMask(ace);
+    IntToOutfile(api, &nextRecord, accessMask, dwAccessMask, TRUE);
+    FlagsToOutfile(api, &nextRecord, accessMaskGeneric, dwAccessMask & ACE_GENERIC_RIGHTS_MASK, gc_AceGenericAccessMaskValues, ARRAY_COUNT(gc_AceGenericAccessMaskValues));
+    FlagsToOutfile(api, &nextRecord, accessMaskStandard, dwAccessMask & ACE_STANDARD_RIGHTS_MASK, gc_AceStandardAccessMaskValues, ARRAY_COUNT(gc_AceStandardAccessMaskValues));
     switch (ace->imported.source) {
-    case AceFromActiveDirectory: FlagsToOutfile(api, accessMask & ACE_SPECIFIC_RIGHTS_MASK, gc_AceSpecificAdAccessMaskValues, ARRAY_COUNT(gc_AceSpecificAdAccessMaskValues), FALSE); break;
-    case AceFromFileSystem:      FlagsToOutfile(api, accessMask & ACE_SPECIFIC_RIGHTS_MASK, gc_AceSpecificFsAccessMaskValues, ARRAY_COUNT(gc_AceSpecificFsAccessMaskValues), FALSE); break;
+    case AceFromActiveDirectory: FlagsToOutfile(api, &nextRecord, accessMaskSpecific, dwAccessMask & ACE_SPECIFIC_RIGHTS_MASK, gc_AceSpecificAdAccessMaskValues, ARRAY_COUNT(gc_AceSpecificAdAccessMaskValues)); break;
+    case AceFromFileSystem:      FlagsToOutfile(api, &nextRecord, accessMaskSpecific, dwAccessMask & ACE_SPECIFIC_RIGHTS_MASK, gc_AceSpecificFsAccessMaskValues, ARRAY_COUNT(gc_AceSpecificFsAccessMaskValues)); break;
     default:
         API_LOG(Err, _T("Unknown ACE source <%u>"), ace->imported.source);
     }
@@ -365,44 +306,46 @@ BOOL PLUGIN_WRITER_WRITEACE(
     //
     // ObjectFlags,ObjectFlagsResolved
     //
-    DWORD objectFlags = IS_OBJECT_ACE(ace->imported.raw) ? api->Ace.GetObjectFlags(ace) : 0;
-    IntToOutfile(api, objectFlags, FALSE, FALSE);
-    FlagsToOutfile(api, objectFlags, gc_AceObjectFlagsValues, ARRAY_COUNT(gc_AceObjectFlagsValues), FALSE);
+    DWORD dwObjectFlags = IS_OBJECT_ACE(ace->imported.raw) ? api->Ace.GetObjectFlags(ace) : 0;
+    IntToOutfile(api, &nextRecord, objectFlags, dwObjectFlags, FALSE);
+    FlagsToOutfile(api, &nextRecord, objectFlagsResolved, dwObjectFlags, gc_AceObjectFlagsValues, ARRAY_COUNT(gc_AceObjectFlagsValues));
 
     //
     // ObjectType, ObjectTypeResolved
     //
-    if (objectFlags & ACE_OBJECT_TYPE_PRESENT) {
-        GuidToOutfile(api, api->Ace.GetObjectTypeAce(ace), FALSE);
+    if (dwObjectFlags & ACE_OBJECT_TYPE_PRESENT) {
+        GuidToOutfile(api, &nextRecord, objectType, api->Ace.GetObjectTypeAce(ace));
     }
-    else {
-        StrToOutfile(api, NULL, FALSE);
-        StrToOutfile(api, NULL, FALSE);
-    }
+	else {
+		StrToOutfile(&nextRecord, objectType, _T("<empty>"));
+		StrToOutfile(&nextRecord, objectTypeResolved, _T("<empty>"));
+	}
+
 
     //
     // InheritedObjectType, InheritedObjectTypeResolved
     //
-    if (objectFlags & ACE_INHERITED_OBJECT_TYPE_PRESENT) {
-        GuidToOutfile(api, api->Ace.GetInheritedObjectTypeAce(ace), FALSE);
+    if (dwObjectFlags & ACE_INHERITED_OBJECT_TYPE_PRESENT) {
+        GuidToOutfile(api, &nextRecord, inheritedObjectType, api->Ace.GetInheritedObjectTypeAce(ace));
     }
-    else {
-        StrToOutfile(api, NULL, FALSE);
-        StrToOutfile(api, NULL, FALSE);
-    }
+	else {
+		StrToOutfile(&nextRecord, inheritedObjectType, _T("<empty>"));
+		StrToOutfile(&nextRecord, inheritedObjectTypeResolved, _T("<empty>"));
+	}
 
     //
     // DefaultFrom
     //
     if (obj->imported.adminCount == 1 && api->Ace.IsInAdminSdHolder(ace)) {
-        StrToOutfile(api, _T("AdminSdHolder"), TRUE);
+        StrToOutfile(&nextRecord, defaultFrom, _T("AdminSdHolder"));
     }
     else if (api->Ace.IsInDefaultSd(ace)) {
-        StrToOutfile(api, _T("DefaultSd"), TRUE);
-    }
-    else {
-        StrToOutfile(api, NULL, TRUE);
+        StrToOutfile(&nextRecord, defaultFrom, _T("DefaultSd"));
     }
 
+	//
+	// Write the whole record
+	//
+	api->InputCsv.CsvWriteNextRecord(gs_hOutfile, nextRecord, NULL);
     return TRUE;
 }

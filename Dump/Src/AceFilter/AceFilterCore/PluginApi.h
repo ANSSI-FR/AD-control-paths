@@ -6,19 +6,19 @@
 
 /* --- INCLUDES ------------------------------------------------------------- */
 #include "Common.h"
-#include "InputFile.h"
 #include "ImportedObjects.h"
 #include "AceConstants.h"
+
+
 
 /* --- DEFINES -------------------------------------------------------------- */
 /* --- TYPES ---------------------------------------------------------------- */
 typedef struct _PLUGIN_API_TABLE {
-
     struct {
         void(*Log)(
-        _In_  LOG_LEVEL   lvl,
-        _In_  LPTSTR      frmt,
-        _In_  ...
+			_In_  const LOG_LEVEL   eLoglvl,
+			_In_  const PTCHAR ptFrmt,
+			_In_  ...
         );
 
         LPTSTR(*GetPluginOption)(
@@ -26,130 +26,125 @@ typedef struct _PLUGIN_API_TABLE {
             _In_ BOOL required
             );
 
-        HRESULT(*ConvertStrGuidToGuid)(
-            _In_ LPTSTR strGuid,
-            _Out_ GUID * guid
+        BOOL (*ConvertStrGuidToGuid)(
+			_In_ const PTCHAR ptGuid,
+			_In_ GUID * pGuid
             );
 
         BOOL (*StrNextToken)(
-            _In_ LPTSTR str,
-            _In_ LPTSTR del,
-            _Inout_ LPTSTR *ctx,
-            _Out_ LPTSTR *tok
+			_In_ const PTCHAR ptStr,
+			_In_ const PTCHAR ptDelim,
+			_Inout_ PTCHAR *pptCtx,
+			_Out_ PTCHAR *pptTok
             );
 
         BOOL (*IsInSetOfStrings)(
-            _In_  LPCTSTR        arg,
-            _In_  const LPCTSTR  stringSet[],
-            _In_  DWORD          setSize,
-            _Out_opt_ DWORD          *index
+			_In_ const PTCHAR ptNeedle,
+			_In_ const PTCHAR ptHaystack[],
+			_In_ const DWORD dwSetSize,
+			_Out_opt_ DWORD *pdwIndex
             );
 
         void (*Hexify)(
-            _Out_ LPTSTR outstr,
+            _In_ LPTSTR outstr,
             _In_ PBYTE indata,
             _In_ DWORD len
             );
 
         void (*Unhexify)(
-            _Out_ PBYTE outdata,
+            _In_ PBYTE outdata,
             _In_ LPTSTR instr
             );
 
         BOOL (*EnablePrivForCurrentProcess)(
-            _In_ LPTSTR szPrivilege
+			_In_ const PTCHAR ptPriv
             );
 
     } Common;
 
+	struct {
+		BOOL (*CsvOpenRead)(
+			_In_ const LPTSTR ptCsvFilename,
+			_Out_opt_ PDWORD pdwCsvHeaderCount,
+			_Out_opt_ LPTSTR *ppptCsvHeaderValues[],
+			_Out_ PCSV_HANDLE pCsvHandle
+		);
+		BOOL (*CsvGetNextRecord)(
+			_In_ const CSV_HANDLE hCsvHandle,
+			_In_ LPTSTR **pptCsvRecordValues,
+			_Out_opt_ PDWORD pdwCsvRecordNumber
+		);
+		BOOL (*CsvClose)(
+			_Inout_ PCSV_HANDLE phCsvHandle
+		);
+		BOOL (*CsvResetFile)(
+			_In_ const CSV_HANDLE hCsvHandle
+		);
+		VOID (*CsvHeapFree)(
+			_In_ PVOID pMem
+			);
+		VOID (*CsvRecordArrayHeapFree)(
+			_In_ PVOID *ppMemArr,
+			_In_ DWORD dwCount
+		);
+		BOOL (*CsvOpenWrite)(
+			_In_ const LPTSTR ptCsvFilename,
+			_In_ const DWORD dwCsvHeaderCount,
+			_In_ const LPTSTR pptCsvHeaderValues[],
+			_Out_ PCSV_HANDLE pCsvHandle
+		);
+		BOOL (*CsvWriteNextRecord)(
+			_In_ const CSV_HANDLE hCsvHandle,
+			_In_ const LPTSTR pptCsvRecordValues[],
+			_Out_opt_ PDWORD pdwCsvRecordNumber
+		);
+		DWORD (*CsvGetLastError)(
+			_In_ const CSV_HANDLE hCsvHandle
+		);
+	} InputCsv;
 
     struct {
-        DWORD(*ParseLine)(
-        _In_  PCHAR    szLine,
-        _In_  DWORD    dwMaxLineSize,
-        _In_  DWORD    dwTokenCount,
-        _Inout_ LPTSTR   pszTokens[]
-        );
+		BOOL (*UtilsHeapCreate)(
+			_Out_ PUTILS_HEAP *ppHeap,
+			_In_ const PTCHAR ptName,
+			_In_opt_ const PFN_UTILS_HEAP_FATAL_ERROR_HANDLER pfnFatalErrorHandler
+		);
 
-        BOOL(*ReadLine)(
-            _In_                          PBYTE    *pInput,
-            _In_                          LONGLONG llSizeInput,
-            _Out_                         LONGLONG *llPositionInput,
-            _Out_writes_(dwMaxLineSize)   PTCHAR   pOutputLine,
-            _In_                          DWORD    dwMaxLineSize
-            );
+		BOOL (*UtilsHeapDestroy)(
+			_Inout_ PUTILS_HEAP *ppHeap
+		);
 
-        DWORD(*ReadParseTsvLine)(
-            _In_                          PBYTE    *pInput,
-            _In_                          LONGLONG llSizeInput,
-            _Out_                         LONGLONG *llPositionInput,
-            _In_  DWORD    dwTokenCount,
-            _Out_ LPTSTR   pszTokens[],
-            _In_ LPTSTR skipHeaderFirstToken
-            );
+		_Ret_notnull_ PVOID (*UtilsHeapAlloc)(
+			_In_ const PTCHAR ptCaller,
+			_In_ const PUTILS_HEAP pHeap,
+			_In_ const DWORD dwSize
+		);
 
-        void(*ForeachLine)(
-            _In_     PINPUT_FILE       pInputFile,
-            _In_     DWORD             dwTokenCount,
-            _In_     FN_LINE_CALLBACK  pfnCallback,
-            _Inout_  PVOID             pParam
-            );
+		_Ret_notnull_ PVOID (*UtilsHeapStrDup)(
+			_In_ const PTCHAR ptCaller,
+			_In_ const PUTILS_HEAP pHeap,
+			_In_ const PTCHAR ptStr
+		);
 
-        BOOL(*InitInputFile)(
-            _In_     LPTSTR      szPath,
-            _In_     LPTSTR      szName,
-            _Inout_  PINPUT_FILE pInputFile
-            );
+		_Ret_notnull_ PVOID (*UtilsHeapMemDup)(
+			_In_ const PTCHAR ptCaller,
+			_In_ const PUTILS_HEAP pHeap,
+			_In_ const PVOID pvStruct,
+			_In_ const DWORD dwSize
+		);
 
-        void (*ResetInputFile)(
-            _In_ PINPUT_FILE inputFile,
-            _Inout_ PVOID *mapping,
-            _Inout_ PLONGLONG position
-            );
+		void (*UtilsHeapFree)(
+			_In_ const PTCHAR ptCaller,
+			_In_ const PUTILS_HEAP pHeap,
+			_In_ const PVOID pMem
+		);
 
-        void(*CloseInputFile)(
-            _Inout_  PINPUT_FILE pInputFile
-            );
-
-    } InputFile;
-
-
-    struct {
-
-        HLOCAL(*LocalAllocCheck)(
-        _In_  LPTSTR   szCallerName,
-        _In_  SIZE_T   uBytes
-        );
-
-        void(*LocalFreeCheck)(
-            _In_  LPTSTR   szCallerName,
-            _In_  HLOCAL   hMem
-            );
-
-        LPVOID(*HeapAllocCheck)(
-            _In_  LPTSTR   szCallerName,
-            _In_  HANDLE   hHeap,
-            _In_  DWORD    dwFlags,
-            _In_  SIZE_T   dwBytes
-            );
-
-        void(*HeapFreeCheck)(
-            _In_  LPTSTR   szCallerName,
-            _In_  HANDLE   hHeap,
-            _In_  DWORD    dwFlags,
-            _In_  LPVOID   lpMem
-            );
-
-        LPTSTR(*StrDupCheck)(
-            _In_  LPTSTR   szCallerName,
-            _In_  LPTSTR   szStrToDup
-            );
-
-        void(*FreeCheck)(
-            _In_  LPTSTR   szCallerName,
-            _In_ void *memblock
-            );
-
+		void(*UtilsHeapFreeArray)(
+			_In_ const PTCHAR ptCaller,
+			_In_ const PUTILS_HEAP pHeap,
+			_In_ const PVOID *ppMemArr,
+			_In_ const DWORD dwCount
+			);
     } Alloc;
 
     struct {
@@ -202,46 +197,16 @@ typedef struct _PLUGIN_API_TABLE {
 
     struct {
 
-        DWORD * (*ParseObjectClasses)(
-        _Inout_  LPTSTR   szObjectClasses,
-        _Out_    DWORD    *pdwObjectClassCount
-        );
-
-    } Object;
-
-    struct {
-
         LPTSTR (*ResolverGetAceTrusteeStr)(
         _In_ PIMPORTED_ACE ace
         );
-
-        /*
-        LPTSTR (*ResolverGetObjectPrimaryOwnerStr)(
-            _In_ PIMPORTED_OBJECT obj
-            );
-        */
-
-        /*
-        LPTSTR (*ResolverGetObjectPrimaryGroupStr)(
-            _In_ PIMPORTED_OBJECT obj
-            );
-        */
-        
+       
         PIMPORTED_OBJECT(*ResolverGetAceTrustee)(
         _In_ PIMPORTED_ACE ace
         );
 
-		PDWORD (*ResolverGetObjectClassesIds)(
-			_In_ PIMPORTED_OBJECT obj
-			);
-
         PIMPORTED_OBJECT (*ResolverGetAceObject)(
             _In_ PIMPORTED_ACE ace
-            );
-
-        PIMPORTED_SCHEMA(*ResolverGetObjectObjectClass)(
-            _In_ PIMPORTED_OBJECT obj,
-            _In_ DWORD idx
             );
 
         PSECURITY_DESCRIPTOR (*ResolverGetSchemaDefaultSD)(
@@ -267,6 +232,8 @@ typedef struct _PLUGIN_API_TABLE {
         LPTSTR (*GetDomainDn)(
             );
 
+		GUID *(*GetAdmPwdGuid)(
+			);
     } Resolver;
 
 } PLUGIN_API_TABLE, *PPLUGIN_API_TABLE;

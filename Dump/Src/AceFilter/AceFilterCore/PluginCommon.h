@@ -25,18 +25,13 @@
 #define API_LOG                     LOG
 #define API_FATAL                   FATAL
 
-#undef LocalAllocCheckX
-#undef LocalFreeCheckX
-#undef HeapAllocCheckX
-#undef HeapFreeCheckX
-#undef StrDupCheckX
-#undef FreeCheckX
-#define ApiLocalAllocCheckX(x)                 api->Alloc.LocalAllocCheck(_T(__FUNCTION__), x)
-#define ApiLocalFreeCheckX(x)                  api->Alloc.LocalFreeCheck(_T(__FUNCTION__), x)
-#define ApiHeapAllocCheckX(x,y,z)              api->Alloc.HeapAllocCheck(_T(__FUNCTION__), x, y, z)
-#define ApiHeapFreeCheckX(x,y,z)               api->Alloc.HeapFreeCheck(_T(__FUNCTION__), x, y, z)
-#define ApiStrDupCheckX(x)                     api->Alloc.StrDupCheck(_T(__FUNCTION__), x)
-#define ApiFreeCheckX(x)                       api->Alloc.FreeCheck(_T(__FUNCTION__), x)
+#define ApiHeapAllocX(x,y)                     api->Alloc.UtilsHeapAlloc(_T(__FUNCTION__), x, y)
+#define ApiHeapFreeX(x,y)                      api->Alloc.UtilsHeapFree(_T(__FUNCTION__), x, y)
+#define ApiStrDupX(x,y)                        api->Alloc.UtilsHeapStrDup(_T(__FUNCTION__), x, y)
+#define ApiHeapFreeX(x,y)                      api->Alloc.UtilsHeapFree(_T(__FUNCTION__), x, y)
+#define ApiHeapFreeArrayX(x,y,z)               api->Alloc.UtilsHeapFreeArray(_T(__FUNCTION__),x,y,z)
+#define ApiHeapCreateX(x,y,z)                  api->Alloc.UtilsHeapCreate(x,y,z)
+#define ApiHeapDestroyX(x)                     api->Alloc.UtilsHeapDestroy(x)
 
 
 #define PLUGIN_KEYWORD_SIZE                 (4) // 3 chars + null
@@ -57,6 +52,9 @@
 #define PLUGIN_DECLARE_GETNEXTOBJ           PLUGIN_DECLARE_FCT(PLUGIN_FN_PROCESSOBJECT, PLUGIN_IMPORTER_GETNEXTOBJ)
 #define PLUGIN_DECLARE_GETNEXTSCH           PLUGIN_DECLARE_FCT(PLUGIN_FN_PROCESSSCHEMA, PLUGIN_IMPORTER_GETNEXTSCH)
 #define PLUGIN_DECLARE_RESETREADING         PLUGIN_DECLARE_FCT(PLUGIN_FN_RESETREADING, PLUGIN_IMPORTER_RESETREADING)
+#define PLUGIN_DECLARE_FREEACE              PLUGIN_DECLARE_FCT(PLUGIN_FN_FREEACE, PLUGIN_IMPORTER_FREEACE)
+#define PLUGIN_DECLARE_FREEOBJECT           PLUGIN_DECLARE_FCT(PLUGIN_FN_FREEOBJECT, PLUGIN_IMPORTER_FREEOBJECT)
+#define PLUGIN_DECLARE_FREESCHEMA           PLUGIN_DECLARE_FCT(PLUGIN_FN_FREESCHEMA, PLUGIN_IMPORTER_FREESCHEMA)
 #define PLUGIN_DECLARE_FILTERACE            PLUGIN_DECLARE_FCT(PLUGIN_FN_PROCESSACE, PLUGIN_FILTER_FILTERACE)
 #define PLUGIN_DECLARE_WRITEACE             PLUGIN_DECLARE_FCT(PLUGIN_FN_PROCESSACE, PLUGIN_WRITER_WRITEACE)
 

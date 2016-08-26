@@ -7,19 +7,19 @@
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 /* --- PUBLIC VARIABLES ----------------------------------------------------- */
 const static PLUGIN_TYPE gcs_PluginTypeImporter = {
-    .name = "Importer",
+    .name = _T("Importer"),
     .directory = PLUGINS_DIR_IMPORTERS,
     .size = sizeof(PLUGIN_IMPORTER)
 };
 
 const static PLUGIN_TYPE gcs_PluginTypeFilter = {
-    .name = "Filter",
+    .name = _T("Filter"),
     .directory = PLUGINS_DIR_FILTERS,
     .size = sizeof(PLUGIN_FILTER)
 };
 
 const static PLUGIN_TYPE gcs_PluginTypeWriter = {
-    .name = "Writer",
+    .name = _T("Writer"),
     .directory = PLUGINS_DIR_WRITERS,
     .size = sizeof(PLUGIN_WRITER)
 };
@@ -27,11 +27,17 @@ const static PLUGIN_TYPE gcs_PluginTypeWriter = {
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 static FARPROC PluginResolve(
     _Inout_ PPLUGIN_HEAD plugin,
-    _In_ LPCSTR procName,
+    _In_ LPTSTR procName,
     _In_ BOOL fatal
     ) {
+	FARPROC proc = NULL;
+	LPSTR procNameA = NULL;
+	HANDLE processHeap = NULL;
 
-    FARPROC proc = GetProcAddress(plugin->module, procName);
+	// TODO
+	processHeap = GetProcessHeap();
+	UtilsHeapAllocAStrAndConvertWStr((PUTILS_HEAP)&processHeap, procName, &procNameA);
+    proc = GetProcAddress(plugin->module, procNameA);
     if (!proc && fatal) {
         FATAL(_T("Failed to resolve required symbol <%s> for plugin <%s>"), procName, PLUGIN_GET_NAME(plugin));
     }
@@ -49,7 +55,6 @@ static void PluginLoadRequirements(
         PLUGIN_REQ_STR(PLUGIN_REQUIRE_SID_RESOLUTION),
         PLUGIN_REQ_STR(PLUGIN_REQUIRE_DN_RESOLUTION),
         PLUGIN_REQ_STR(PLUGIN_REQUIRE_GUID_RESOLUTION),
-        PLUGIN_REQ_STR(PLUGIN_REQUIRE_CLASSID_RESOLUTION),
 		PLUGIN_REQ_STR(PLUGIN_REQUIRE_DISPLAYNAME_RESOLUTION),
         PLUGIN_REQ_STR(PLUGIN_REQUIRE_ADMINSDHOLDER_SD),
     };
@@ -73,7 +78,7 @@ static void PluginLoadGenericSingle(
     TCHAR path[MAX_PATH] = { 0 };
     size_t size = 0;
 
-    size = _stprintf_s(path, _countof(path), "%s/%s.%s", plugin->type->directory, PLUGIN_GET_NAME(plugin), PLUGINS_FILE_EXTENSION);
+    size = _stprintf_s(path, _countof(path), _T("%s/%s.%s"), plugin->type->directory, PLUGIN_GET_NAME(plugin), PLUGINS_FILE_EXTENSION);
     if (size == -1) {
         FATAL(_T("Cannot construct path for module <%s> (directory is <%s>)"), PLUGIN_GET_NAME(plugin), plugin->type->directory);
     }
@@ -148,7 +153,7 @@ static void ListPluginType(
 
     PLUGIN_SET_TYPE(&plugin, type);
 
-    size = _stprintf_s(path, _countof(path), "%s/*.%s", type->directory, PLUGINS_FILE_EXTENSION);
+    size = _stprintf_s(path, _countof(path), _T("%s/*.%s"), type->directory, PLUGINS_FILE_EXTENSION);
     if (size == -1) {
         FATAL(_T("Cannot construct path for plugin type <%s> (directory is <%s>)"), type->name, type->directory);
     }
@@ -211,9 +216,11 @@ DWORD PluginLoadImporters(
         PLUGIN_RESOLVE_FN(&plugins[i], PLUGIN_PFN_PROCESSSCHEMA, GetNextSchema, PLUGIN_IMPORTER_GETNEXTSCH, FALSE);
         PLUGIN_RESOLVE_FN(&plugins[i], PLUGIN_PFN_PROCESSOBJECT, GetNextObject, PLUGIN_IMPORTER_GETNEXTOBJ, FALSE);
         PLUGIN_RESOLVE_FN(&plugins[i], PLUGIN_PFN_RESETREADING, ResetReading, PLUGIN_IMPORTER_RESETREADING, TRUE);
+		PLUGIN_RESOLVE_FN(&plugins[i], PLUGIN_PFN_FREEACE, FreeAce, PLUGIN_IMPORTER_FREEACE, FALSE);
+		PLUGIN_RESOLVE_FN(&plugins[i], PLUGIN_PFN_FREEOBJECT, FreeObject, PLUGIN_IMPORTER_FREEOBJECT, FALSE);
+		PLUGIN_RESOLVE_FN(&plugins[i], PLUGIN_PFN_FREESCHEMA, FreeSchema, PLUGIN_IMPORTER_FREESCHEMA, FALSE);
         PLUGIN_SET_LOADED(&plugins[i]);
     }
-
     return count;
 }
 

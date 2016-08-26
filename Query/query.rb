@@ -3,6 +3,7 @@
 
 require 'getoptlong'
 require 'fileutils'
+require 'csv'
 
 $LOAD_PATH.unshift '.'
 require 'lib/neowrapper'
@@ -22,9 +23,11 @@ opts = GetoptLong.new(
   [ '--nodetype', '-n', GetoptLong::REQUIRED_ARGUMENT ],
   [ '--lang', '-l', GetoptLong::REQUIRED_ARGUMENT ],
   [ '--password', '-p', GetoptLong::REQUIRED_ARGUMENT ],
+  [ '--denyacefile', '-y', GetoptLong::REQUIRED_ARGUMENT ],
 
   # operations
-  [ '--auto', '-A', GetoptLong::OPTIONAL_ARGUMENT ],
+  [ '--quick', '-Q', GetoptLong::OPTIONAL_ARGUMENT ],
+  [ '--full', '-F', GetoptLong::OPTIONAL_ARGUMENT ],
   [ '--search', '-S', GetoptLong::REQUIRED_ARGUMENT ],
   [ '--info', '-I', GetoptLong::REQUIRED_ARGUMENT ],
   [ '--graph', '-G', GetoptLong::OPTIONAL_ARGUMENT ],
@@ -39,13 +42,23 @@ def usage
   puts <<EOS
 #{$0} [OPTIONS] [TARGET]
 
-TARGET: node id or node name
+TARGET: node id or node name (can be searched from partial name, e.g. "cn=domain admins,")
 
 OPTIONS:
   --help: this help
+  
+  --------------------------------------------------------------------------------
+  GENERIC: automatic operations mode
+  
+    --quick FILENAME: create shortest control graphs/paths/nodes to "cn=domain admins,"
+	                   in DIRECTORY (default is .\out\)
+	
+	--full DIRECTORY: full audit mode (very long)
+                      create control graphs/paths/nodes for many default targets (defined in lib/defaults.rb)
+					  in DIRECTORY (default is .\out\)
 
   --------------------------------------------------------------------------------
-  OPERATIONS: specify the operation you want to perform
+  SPECIFIC OPERATIONS: specify the operation you want to perform
               default is --nodes
 
     --nodes FILE: output control nodes to FILE (or stdout if FILE is absent)
@@ -60,8 +73,7 @@ OPTIONS:
                  direction and type can be specified with --direction and --type options
                  output is formated in tab separated fields
 
-    --auto DIRECTORY: automatic-mode
-                      create control graphs/paths/nodes for default targets (defined in lib/defaults.rb) in DIRECTORY
+
 
     --search NAME: search for a node with the given NAME and print its ID
                    NAME is interpreted as a Java regexp, so special charaters (such as '{') need to be escaped, or they will be interpreted
@@ -91,6 +103,8 @@ OPTIONS:
   --password PASSWORD: use this password instead of default one ('secret') to
                        authenticate to the REST interface
 
+  --denyacefile FILE: specify a file of denied ACE to filter paths and graphs where those ACE are present, including transitively through group_member relations
+
   --------------------------------------------------------------------------------
   EYE CANDY
 
@@ -106,7 +120,10 @@ opts.each do |opt, arg|
   case opt
   when '--help'
     usage
-
+  when '--denyacefile'
+    w.info "loading deny ace file \'#{arg}\'"
+	w.denyace = CSV.read(arg,{:encoding => 'utf-16le:utf-8'})
+	  
   when '--password'
     w.info "setting REST client password to \'#{arg}\'"
     w.set_password arg
@@ -131,9 +148,14 @@ opts.each do |opt, arg|
     end
     exit 0
 
-  when '--auto'
+
+  when '--full'
     infos[:auto] = true
     infos[:outdir] = (arg.size > 0) ? arg : "out"
+  when '--quick'
+    infos[:quick] = true
+	infos[:auto] = false
+	infos[:outdir] = (arg.size > 0) ? arg : "out"
   when '--type'
     infos[:type] = arg.to_sym
   when '--direction'
@@ -163,41 +185,36 @@ opts.each do |opt, arg|
   end
 end
 
-if infos[:auto]
+if infos[:auto] || infos[:quick]
   infos[:lang] ||= :en
   w.color = true
   FileUtils.mkdir_p(infos[:outdir]) unless File.directory? infos[:outdir]
 end
 
-if infos[:auto]
+if infos[:auto] || infos[:quick]
   raise "unknown lang: #{infos[:lang]}" unless TRANSLATION_TABLE[infos[:lang]]
-
-  w.info "running in automatic-mode, lang=#{infos[:lang]}, outdir=#{infos[:outdir]}"
+  w.info "running in automatic audit mode, lang=#{infos[:lang]}, outdir=#{infos[:outdir]}"
   DEFAULT_TARGETS.each do |name_sym, defaults|
 
     name = TRANSLATION_TABLE[infos[:lang]][name_sym]
     raise "no translation for symbol #{name_sym}" unless name
     w.debug "translation: #{name_sym} -> #{name}"
-
     target = w.search(name).first
     unless target.nil?
-
-      w.info "control graph for #{name}"
-      [ :short, :full ].each do |t|
-        w.debug "control graph -> #{t} #{defaults[:direction]} #{name}"
-        begin
-          Dir.chdir infos[:outdir] do
-            fgraph = File.open(name_sym.to_s + "_#{defaults[:direction]}_#{t}.json", "w")
-            fgraph.write(w.control_graph(w.id(target), defaults[:direction], t))
-            fgraph.write("\n")
-            fgraph.close()
-          end
-        rescue RuntimeError, Neography::NeographyError => e
-          w.error "control graph failed: #{e.message}"
-          puts e.backtrace.inspect
-          next
+      w.info "control nodes for #{name}"
+      w.debug "control nodes -> #{defaults[:direction]} #{name}"
+      begin
+        Dir.chdir infos[:outdir] do
+          fnodes = File.open(name_sym.to_s + "_#{defaults[:direction]}_nodes.txt", "w")
+          nodes = w.control_nodes(w.id(target), defaults[:direction], nil)
+          fnodes.write( nodes.map { |n| w.nodename(n) }.sort.join("\n"))
+          fnodes.write("\n")
+          fnodes.close()
         end
-      end
+      rescue RuntimeError, Neography::NeographyError => e
+        w.error "control nodes failed: #{e.message}"
+        puts e.backtrace.inspect
+      end      
 
       w.info "control paths for #{name}"
       w.debug "control paths -> short #{defaults[:direction]} #{name}"
@@ -213,23 +230,31 @@ if infos[:auto]
         puts e.backtrace.inspect
       end
 
-      w.info "control nodes for #{name}"
-      w.debug "control nodes -> #{defaults[:direction]} #{name}"
-      begin
-        Dir.chdir infos[:outdir] do
-          fnodes = File.open(name_sym.to_s + "_#{defaults[:direction]}_nodes.txt", "w")
-          nodes = w.control_nodes(w.id(target), defaults[:direction], nil)
-          fnodes.write( nodes.map { |n| w.nodename(n) }.sort.join("\n"))
-          fnodes.write("\n")
-          fnodes.close()
+	  w.info "control graph for #{name}"
+      [ :short, :full ].each do |t|
+        w.debug "control graph -> #{t} #{defaults[:direction]} #{name}"
+        begin
+          Dir.chdir infos[:outdir] do
+            fgraph = File.open(name_sym.to_s + "_#{defaults[:direction]}_#{t}.json", "w")
+            fgraph.write(w.control_graph(w.id(target), defaults[:direction], t))
+            fgraph.write("\n")
+            fgraph.close()
+          end
+        rescue RuntimeError, Neography::NeographyError => e
+          w.error "control graph failed: #{e.message}"
+          puts e.backtrace.inspect
+          next
         end
-      rescue RuntimeError, Neography::NeographyError => e
-        w.error "control nodes failed: #{e.message}"
-        puts e.backtrace.inspect
+	    if infos[:quick]
+	      break
+	    end
       end
 
     else
-      w.debug "did not find #{name}"
+      w.error "did not find #{name}"
+    end
+    if infos[:quick]
+      break
     end
   end
   exit 0
@@ -257,7 +282,7 @@ when /^\d+$/ # numeric target
     exit 1
   end
 else # name, try to find corresponding node
-  w.debug "\'#{target}\' is a node name"
+  w.info "\'#{target}\' is a node name, looking for it..."
   target_id = w.id(target)
   unless target_id
     # not an exact name, try to find a corresponding node
@@ -285,12 +310,13 @@ unless infos[:graph] or infos[:path] or infos[:nodes]
   infos[:nodes] = $stdout
 end
 
-if infos[:graph]
-  w.info "#{infos[:type]} control graph #{infos[:direction]} node number #{target_id}"
+if infos[:nodes]
+  w.info "control nodes #{"with type #{infos[:label]} " if infos[:label]}#{infos[:direction]} node number #{target_id}"
+  nodes = w.control_nodes(target_id, infos[:direction], infos[:label])
   begin
-    infos[:graph].write(w.control_graph(target_id, infos[:direction], infos[:type]))
-    infos[:graph].write("\n")
-    infos[:graph].close
+    infos[:nodes].write( nodes.map { |n| w.nodename(n) }.sort.join("\n"))
+    infos[:nodes].write("\n")
+    infos[:nodes].close
   rescue RuntimeError, Neography::NeographyError => e
     w.error "control graph failed: #{e.message}"
     puts e.backtrace.inspect
@@ -309,13 +335,12 @@ if infos[:path]
   end
 end
 
-if infos[:nodes]
-  w.info "control nodes #{"with type #{infos[:label]} " if infos[:label]}#{infos[:direction]} node number #{target_id}"
-  nodes = w.control_nodes(target_id, infos[:direction], infos[:label])
+if infos[:graph]
+  w.info "#{infos[:type]} control graph #{infos[:direction]} node number #{target_id}"
   begin
-    infos[:nodes].write( nodes.map { |n| w.nodename(n) }.sort.join("\n"))
-    infos[:nodes].write("\n")
-    infos[:nodes].close
+    infos[:graph].write(w.control_graph(target_id, infos[:direction], infos[:type]))
+    infos[:graph].write("\n")
+    infos[:graph].close
   rescue RuntimeError, Neography::NeographyError => e
     w.error "control graph failed: #{e.message}"
     puts e.backtrace.inspect

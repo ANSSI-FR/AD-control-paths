@@ -46,7 +46,7 @@ BOOL PLUGIN_GENERIC_INITIALIZE(
     BOOL bResult = FALSE;
     LPTSTR trustee = api->Common.GetPluginOption(_T("trustee"), TRUE);
 
-    if (_tcsncmp(SID_STR_PREFIX, trustee, strlen(SID_STR_PREFIX)) == 0) {
+    if (_tcsncmp(SID_STR_PREFIX, trustee, _tcslen(SID_STR_PREFIX)) == 0) {
         bResult = ConvertStringSidToSid(trustee, &gs_TrusteeFilter);
         if (!bResult) {
             API_FATAL(_T("Failed to convert SID <%s> to its binary form : <%u>"), trustee, GetLastError());
@@ -76,6 +76,8 @@ BOOL PLUGIN_FILTER_FILTERACE(
         }
         gs_TrusteeFilter = &object->imported.sid;
     }
-
+	if (!gs_TrusteeFilter) {
+		API_FATAL(_T("Obj with empty trustee filter <%s>"), gs_TrusteeDnFilter);
+	}
     return EqualSid(trusteeSidAce, gs_TrusteeFilter);
 }

@@ -42,19 +42,18 @@ void PLUGIN_GENERIC_HELP(
 BOOL PLUGIN_GENERIC_INITIALIZE(
     _In_ PLUGIN_API_TABLE const * const api
     ) {
-    HRESULT hr = NOERROR;
+    BOOL bResult = FALSE;
     LPTSTR objtype = api->Common.GetPluginOption(_T("objtype"), FALSE);
-    // TODO : guid resolution from resolved str form could be nice here
 
     if (!objtype) {
-        API_LOG(Info, _T("Filtering empty objectType"));
+        API_LOG(Info, _T("Filtering when objectType is a non-matching Class"));
         gs_EmptyObjType = TRUE;
     }
     else {
-        hr = api->Common.ConvertStrGuidToGuid(objtype, &gs_ObjectTypeFilter);
+        bResult = api->Common.ConvertStrGuidToGuid(objtype, &gs_ObjectTypeFilter);
         gs_EmptyObjType = FALSE;
-        if (hr != NOERROR) {
-            API_FATAL(_T("Error while converting object type guid <%s> to its binary form : <%#08x)"), objtype, hr);
+        if (bResult != NOERROR) {
+            API_FATAL(_T("Error while converting object type guid <%s> to its binary form : <%#08x)"), objtype, bResult);
         }
         else {
             API_LOG(Info, _T("Filtering objectType <%s>"), objtype);
@@ -69,6 +68,9 @@ BOOL PLUGIN_FILTER_FILTERACE(
     _In_ PLUGIN_API_TABLE const * const api,
     _Inout_ PIMPORTED_ACE ace
     ) {
+	// A very important misexplanation of MSDN: ObjectType of a class does not only applies to create/delete child allowed class
+	// But to the current object for all other rights if OT class is matching.
+	// The ACE does not apply these rights if it's not matching. It's NOT like a deny ACE though !
 	if (api->Ace.isObjectTypeClass(ace))
 		if (!api->Ace.isObjectTypeClassMatching(ace))
 			return FALSE;

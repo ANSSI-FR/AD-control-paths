@@ -3,10 +3,11 @@
 
 require 'neography'
 require 'json'
+require 'set'
 
 Neography.configure do |config|
   config.protocol       = "http://"
-  config.server         = "localhost"
+  config.server         = "127.0.0.1"
   config.port           = 7474
   config.directory      = ""  # prefix this path with '/'
   config.cypher_path    = "/cypher"
@@ -20,8 +21,14 @@ Neography.configure do |config|
   config.parser         = MultiJsonParser
 end
 
+module Enumerable
+  def intersect?(other)
+    other.any? {|v| h[v] }
+  end
+end
+
 class NeoWrapper
-  attr_accessor :maxdepth, :color, :verbose
+  attr_accessor :maxdepth, :color, :verbose, :denyace
 
   def initialize()
     @neo = Neography::Rest.new( { :username => "neo4j", :password => "secret" } )
@@ -39,7 +46,7 @@ class NeoWrapper
   def debug(msg)
     return unless @verbose
     s = ""
-    s << "\e[35m" if @color
+    s << "\e[1;33m" if @color
     s << "[ ] "
     s << "#{msg}"
     s << "\e[0m" if @color
@@ -55,7 +62,7 @@ class NeoWrapper
   end
   def error(msg)
     s = ""
-    s << "\e[33m" if @color
+    s << "\e[31m" if @color
     s << "[!] "
     s << "#{msg}"
     s << "\e[0m" if @color
@@ -98,8 +105,7 @@ class NeoWrapper
   def control_graph(node, direction, path_type)
     nodes = control_nodes(node, direction, nil)
     paths = query_path(node, direction, nodes)
-
-    debug "found #{nodes.size} nodes and #{paths.size} paths, creating graph"
+    debug "found #{nodes.size} nodes and #{paths.size - 1} paths, creating graph"
 
     case path_type
     when :full
@@ -161,8 +167,7 @@ class NeoWrapper
   # direction: :from, :to
   # path_type: :full, :short
   def control_paths(node, direction)
-    paths = query_path(node, direction)
-
+    paths = Marshal.load(Marshal.dump(query_path(node, direction)))
     paths.map! do |p|
       p["nodes"].map! { |n| nodename(n) }
       p["relationships"].map! { |r| reltype(r) }
@@ -176,7 +181,7 @@ class NeoWrapper
       end
     end
 
-    info "found #{paths.size-1} path(s)" # do not count the 0-length path
+    info "found #{paths.size-1} validated path(s)" # do not count the 0-length path
     return paths
   end
 
@@ -184,6 +189,13 @@ class NeoWrapper
   # direction: :from, :to
   # type: type of node ("group", "user", ..., nil means no type filter)
   def control_nodes(node, direction, label)
+    if @prev_cn_node == node && @prev_cn_direction == direction && @prev_cn_label == label
+	  return @prev_control_nodes
+	end
+	@prev_cn_node = node
+	@prev_cn_direction = direction
+	@prev_cn_label = label
+	
     nodes = []
     nodes[0] = [node]
     i = 0
@@ -203,7 +215,8 @@ class NeoWrapper
     info "found #{nodes.size} control nodes, max depth is #{i}"
 
     if label.nil?
-      return nodes
+	  @prev_control_nodes = nodes
+      return @prev_control_nodes
     end
 
     # filter by label
@@ -214,7 +227,8 @@ class NeoWrapper
     query << "RETURN DISTINCT id(n)"
 
     debug "cypher query: #{query} (#id=#{nodes.size})"
-    return @neo.execute_query(query, { :id => nodes })["data"].map { |n| n.first }
+    @prev_control_nodes = @neo.execute_query(query, { :id => nodes })["data"].map { |n| n.first }
+	return @prev_control_nodes
   end
 
   def nodename(n)
@@ -224,7 +238,7 @@ class NeoWrapper
 
   def nodetype(n)
     @nodecache[n] ||= {}
-    @nodecache[n]["type"] ||= @neo.get_node_labels(n).first # should have only one label
+    @nodecache[n]["type"] ||= @neo.get_node_labels(n).last # should have only one label
   end
 
   def reltype(r)
@@ -244,8 +258,14 @@ class NeoWrapper
   private
 
   def query_path(node, direction, control = nil)
+    if @prev_qp_node == node && @prev_qp_direction == direction && @prev_qp_control == control then
+	  return @prev_query_path
+	end
+	@prev_qp_node = node
+	@prev_qp_direction = direction	
     control ||= control_nodes(node, direction, nil)
-
+	@prev_qp_control = control
+	
     query = ""
     case direction
     when :from
@@ -262,7 +282,18 @@ class NeoWrapper
     query << "RETURN path"
 
     debug "cypher query: #{query} (#control=#{control.size})"
-    return @neo.execute_query(query, { :control => control, :n => node })["data"].flatten
+    if @denyace then
+      @prev_query_path = @neo.execute_query(query, { :control => control, :n => node })["data"].flatten
+	  info "found #{@prev_query_path.size - 1} unfiltered control path(s)"
+      denied_paths = validate_paths(@prev_query_path,direction)
+      info "denied #{denied_paths.size} path(s)"
+      debug "denied_paths: #{denied_paths}"
+      denied_paths.map {|i| @prev_query_path.delete_at(i)}
+    else
+      error "WARNING: --denyacefile was not defined"
+      @prev_query_path = @neo.execute_query(query, { :control => control, :n => node })["data"].flatten
+    end
+	return @prev_query_path
   end
 
   # return ids
@@ -296,4 +327,59 @@ class NeoWrapper
   def id_from_url(u)
     return u.split(/\//).last.to_i
   end
+  
+  # Take into account deny ACE
+  # in last relation of path and also
+  # with group membership transitivity
+  def validate_paths(found_paths,direction)
+    info "filtering with #{denyace.size} denied ACE(s)"
+    deniedpaths = []
+	paths = Marshal.load(Marshal.dump(found_paths))
+	paths.map! do |p|
+      p["nodes"].map! { |n| nodename(n) }
+      p["relationships"].map! { |r| reltype(r) }
+      case direction
+      when :to
+        p["nodes"].zip(p["relationships"]).flatten.compact.reverse.join("\t")
+      when :from
+        p["nodes"].zip(p["relationships"]).flatten.compact.join("\t")
+      else
+        raise "unknown direction: #{direction}"
+      end
+    end
+    info "building denyace hash table"
+	h = Hash.new { false }
+    denyace.each {|v| h[v] = true }
+	transitiveRelations = ["GROUP_MEMBER","PRIMARY_GROUP","SID_HISTORY"]
+	info "examining each path"
+	paths.map! {|p| p.split("\t")}
+	paths.map.with_index do |p,index| 
+	  path_exploded = []
+	  stringPath = p.join("->")
+	  while p.length > 1 do
+	    path_exploded_end = []
+            path_exploded_end << p[-3] << p[-1] << p[-2]
+	    path_exploded << path_exploded_end
+	    i = 2
+	    while transitiveRelations.include?(p[-2 * i]) do
+          path_exploded_item = []
+	      path_exploded_item << p[-2 * i - 1] << p[-1] << p[-2]
+	   	  path_exploded << path_exploded_item
+		  i = i + 1
+	    end
+	    p.pop(2)
+	  end
+	  if (path_exploded.any? {|v| h[v] })
+	    debug "#{stringPath}"
+	    deniedpaths.insert(0,index)
+        print "-"
+        $stdout.flush
+	  else
+	    print "+"
+        $stdout.flush
+	  end
+	end
+	puts "."
+	return deniedpaths
+  end 
 end

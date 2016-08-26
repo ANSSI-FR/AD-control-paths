@@ -47,7 +47,7 @@ BOOL PLUGIN_GENERIC_INITIALIZE(
     BOOL bResult = FALSE;
     LPTSTR object = api->Common.GetPluginOption(_T("object"), TRUE);
 
-    if (_tcsncmp(SID_STR_PREFIX, object, strlen(SID_STR_PREFIX)) == 0) {
+    if (_tcsncmp(SID_STR_PREFIX, object, _tcslen(SID_STR_PREFIX)) == 0) {
         bResult = ConvertStringSidToSid(object, &gs_ObjectSidFilter);
         if (!bResult) {
             API_FATAL(_T("Failed to convert SID <%s> to its binary form : <%u>"), object, GetLastError());
@@ -75,6 +75,8 @@ BOOL PLUGIN_FILTER_FILTERACE(
         }
         gs_ObjectDnFilter = object->imported.dn;
     }
-
+	if (!gs_ObjectDnFilter) {
+		API_FATAL(_T("Object does not have dn filter <%s>"), gs_ObjectSidFilterStr);
+	}
     return STR_EQ(ace->imported.objectDn, gs_ObjectDnFilter);
 }

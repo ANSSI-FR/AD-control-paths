@@ -6,36 +6,29 @@
 
 /* --- INCLUDES ------------------------------------------------------------- */
 #include "Common.h"
-#include "AvlTable.h"
 #include "ImportedObjects.h"
+#include "..\libdev\LibCache\src\CacheLib.h"
+
 
 /* --- DEFINES -------------------------------------------------------------- */
-#define AVL_FOREACH(table, ptype, element) \
-    ptype element = NULL; \
-    for (element = (ptype)RtlEnumerateGenericTableAvl(table, TRUE); \
-    element != NULL; \
-    element = (ptype)RtlEnumerateGenericTableAvl(table, FALSE) )
+#define CACHE_HEAP_NAME _T("CACHEHEAP")
+
 
 /* --- TYPES ---------------------------------------------------------------- */
 typedef struct _CACHE_OBJECT_BY_SID {
-    BYTE sid[SECURITY_MAX_SID_SIZE];
-    PIMPORTED_OBJECT object;
+	BYTE sid[SECURITY_MAX_SID_SIZE];
+	PIMPORTED_OBJECT object;
 } CACHE_OBJECT_BY_SID, *PCACHE_OBJECT_BY_SID;
 
 typedef struct _CACHE_OBJECT_BY_DN {
-    LPTSTR dn;
-    PIMPORTED_OBJECT object;
+	LPTSTR dn;
+	PIMPORTED_OBJECT object;
 } CACHE_OBJECT_BY_DN, *PCACHE_OBJECT_BY_DN;
 
 typedef struct _CACHE_SCHEMA_BY_GUID {
-    GUID guid;
-    PIMPORTED_SCHEMA schema;
+	GUID guid;
+	PIMPORTED_SCHEMA schema;
 } CACHE_SCHEMA_BY_GUID, *PCACHE_SCHEMA_BY_GUID;
-
-typedef struct _CACHE_SCHEMA_BY_CLASSID {
-    DWORD classid;
-    PIMPORTED_SCHEMA schema;
-} CACHE_SCHEMA_BY_CLASSID, *PCACHE_SCHEMA_BY_CLASSID;
 
 typedef struct _CACHE_SCHEMA_BY_DISPLAYNAME {
 	LPTSTR displayname;
@@ -47,23 +40,16 @@ typedef struct _CACHE_SCHEMA_BY_DISPLAYNAME {
 /* --- PROTOTYPES ----------------------------------------------------------- */
 BOOL CachesInitialize(
     );
-
 void CachesDestroy(
     );
-
-
 DWORD CacheObjectBySidCount(
     );
 DWORD CacheObjectByDnCount(
     );
 DWORD CacheSchemaByGuidCount(
     );
-DWORD CacheSchemaByClassidCount(
-    );
 DWORD CacheSchemaByDisplayNameCount(
 	);
-
-
 void CacheInsertObject(
     _In_ PIMPORTED_OBJECT obj
     );
@@ -81,10 +67,21 @@ PIMPORTED_OBJECT CacheLookupObjectByDn(
 PIMPORTED_SCHEMA CacheLookupSchemaByGuid(
     _In_ GUID * guid
     );
-PIMPORTED_SCHEMA CacheLookupSchemaByClassid(
-    _In_ DWORD classid
-    );
 PIMPORTED_SCHEMA CacheLookupSchemaByDisplayName(
 	_In_ LPTSTR displayname
 	);
+
+LPTSTR CacheGetDomainDn(
+    );
+GUID *CacheGetAdmPwdGuid(
+    );
+
+static void _Function_class_(const PFN_CACHE_ENTRY_DESTROY_CALLBACK) pfnObjEntryDestroy(
+	_In_ const PCACHE ppCache,
+	_In_ const PVOID pvEntry
+);
+static void _Function_class_(const PFN_CACHE_ENTRY_DESTROY_CALLBACK) pfnSchEntryDestroy(
+	_In_ const PCACHE ppCache,
+	_In_ const PVOID pvEntry
+);
 #endif // __CACHE_H__

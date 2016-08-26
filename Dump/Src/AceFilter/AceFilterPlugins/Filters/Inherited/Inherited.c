@@ -8,7 +8,7 @@
 /* --- PLUGIN DECLARATIONS -------------------------------------------------- */
 #define PLUGIN_NAME         _T("Inherited")
 #define PLUGIN_KEYWORD      _T("INH")
-#define PLUGIN_DESCRIPTION  _T("Filters inherited ACE (remove them except when ObjectType matches)");
+#define PLUGIN_DESCRIPTION  _T("Filters inherit-only ACE");
 
 PLUGIN_DECLARE_NAME;
 PLUGIN_DECLARE_KEYWORD;
@@ -37,7 +37,7 @@ void PLUGIN_GENERIC_HELP(
 
     DWORD i = 0;
 
-    API_LOG(Bypass, _T("Filters out ACE for whom the 'INHERITED_ACE' flag is present except when ObjectType matches."));
+    API_LOG(Bypass, _T("Filters out ACE for whom the 'INHERITED_ACE' flag is present."));
     API_LOG(Bypass, _T("If the <inhflags> plugin option is set, keeps ACE with an AceFlags containing at least the specified flags"));
     API_LOG(Bypass, _T("Valid flags which can be specified (comma separated) are : "));
     for (i = 0; i < ARRAY_COUNT(gc_AceFlagsValues); i++) {
@@ -69,7 +69,7 @@ BOOL PLUGIN_GENERIC_INITIALIZE(
         API_LOG(Info, _T("Filtering inherited flags with mask <%#02x>"), gs_MaskFilter);
     }
     else {
-        API_LOG(Info, _T("Filtering out inherited ACE"));
+        API_LOG(Info, _T("Filtering out inherit-only ACE"));
     }
 
     return TRUE;
@@ -80,17 +80,26 @@ BOOL PLUGIN_FILTER_FILTERACE(
     _In_ PLUGIN_API_TABLE const * const api,
     _Inout_ PIMPORTED_ACE ace
     ) {
-    UNREFERENCED_PARAMETER(api);
-	//
-	// Do not check inherited status when ObjectType GUID is present and matches one of the object classes,
-	// as it can lead to a situation where control is not given on parent object but is given on child.
-	//
-	if (api->Ace.isObjectTypeClassMatching(ace))
-		return TRUE;
-    if (gs_InhflagsOpt) {
-        return ((ace->imported.raw->AceFlags & gs_MaskFilter) == gs_MaskFilter);
-    }
-    else {
-        return ((ace->imported.raw->AceFlags & INHERITED_ACE) == 0);
-    }
+	UNREFERENCED_PARAMETER(api);
+
+	//Note The definitive meaning of IOT is this one: when an ACE is inherited, if IOT does not match, the inherit-only flag is positioned.
+	// It means the ACE does not apply but is still inherited through the container hierarchy.
+
+	//Version 1:
+	// All inherited ACEs are filtered. We do this because we grant control on the original object independently of its class
+	// e.g. reset-pwd on an OU even though it's inherit-only/impacts users only.
+	/*
+	if (gs_InhflagsOpt) {
+		return ((ace->imported.raw->AceFlags & gs_MaskFilter) == gs_MaskFilter);
+	}
+	else {
+		return ((ace->imported.raw->AceFlags & INHERITED_ACE) == 0);
+	}
+	*/
+
+	//Version 2:
+	// Inherit-only means ACE does not apply to the current object. Else, return TRUE and let other filters deal with matching object classes.
+	if (ace->imported.raw->AceFlags & INHERIT_ONLY_ACE)
+		return FALSE;
+	return TRUE;
 }
