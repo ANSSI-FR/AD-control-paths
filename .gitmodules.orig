@@ -1,0 +1,20 @@
+[submodule "Visualize"]
+	path = Visualize
+	url = https://github.com/ANSSI-FR/OVALI.git
+<<<<<<< HEAD
+=======
+[submodule "Dump/Src/ControlRelationsProviders/libdev"]
+
+	path = Dump/Src/ControlRelationsProviders/libdev
+
+	url = git@github.com:ANSSI-FR/ADCP-libdev.git
+	branch = master
+[submodule "Dump/Src/DirectoryCrawler"]
+	path = Dump/Src/DirectoryCrawler
+	url = git@github.com:ANSSI-FR/ADCP-DirectoryCrawler.git
+	branch = master
+[submodule "Dump/Src/AceFilter/libdev"]
+	path = Dump/Src/AceFilter/libdev
+	url = git@github.com:ANSSI-FR/ADCP-libdev.git
+	branch = master
+>>>>>>> github_master
