@@ -1,0 +1,83 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Header Files\Utils">
+      <UniqueIdentifier>{28a7a132-99f3-41e8-90b8-f7a9026eacf8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Utils">
+      <UniqueIdentifier>{ec4bc552-2750-414e-a394-36f703d5982f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Plugins">
+      <UniqueIdentifier>{19609d57-7bf0-45d3-b85f-38a425b0902b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Plugins">
+      <UniqueIdentifier>{d801725c-3709-4b6d-b6bc-9db86ae54645}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Main">
+      <UniqueIdentifier>{85246493-811a-4c58-8e1f-c0474880aa35}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Ace">
+      <UniqueIdentifier>{45db4534-33db-4a11-8a9c-c39714235ee4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Ace">
+      <UniqueIdentifier>{bd4b739d-bc65-4cc5-8737-846d8ebba976}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Main">
+      <UniqueIdentifier>{21f54d56-3990-47e6-bb60-80b869ce7bb3}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Plugin.c">
+      <Filter>Source Files\Plugins</Filter>
+    </ClCompile>
+    <ClCompile Include="AceFilter.c">
+      <Filter>Source Files\Main</Filter>
+    </ClCompile>
+    <ClCompile Include="PluginApi.c">
+      <Filter>Source Files\Plugins</Filter>
+    </ClCompile>
+    <ClCompile Include="Cache.c">
+      <Filter>Source Files\Utils</Filter>
+    </ClCompile>
+    <ClCompile Include="ImportedObjects.c">
+      <Filter>Source Files\Ace</Filter>
+    </ClCompile>
+    <ClCompile Include="AceConstants.c">
+      <Filter>Source Files\Ace</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Common.h">
+      <Filter>Header Files\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="Plugin.h">
+      <Filter>Header Files\Plugins</Filter>
+    </ClInclude>
+    <ClInclude Include="PluginApi.h">
+      <Filter>Header Files\Plugins</Filter>
+    </ClInclude>
+    <ClInclude Include="PluginCommon.h">
+      <Filter>Header Files\Plugins</Filter>
+    </ClInclude>
+    <ClInclude Include="AceFilter.h">
+      <Filter>Header Files\Main</Filter>
+    </ClInclude>
+    <ClInclude Include="Cache.h">
+      <Filter>Header Files\Utils</Filter>
+    </ClInclude>
+    <ClInclude Include="ImportedObjects.h">
+      <Filter>Header Files\Ace</Filter>
+    </ClInclude>
+    <ClInclude Include="AceConstants.h">
+      <Filter>Header Files\Ace</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
