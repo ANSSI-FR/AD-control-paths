@@ -11,7 +11,7 @@ The topic has been presented during a talk at the French conference SSTIC-2014. 
 This repository contains tools that can be used to generate such graphs.
 
 ---
-
+0. Changes
 0. Install / Prerequisites
 0. Usage context
 0. Dump data into CSV files
@@ -21,17 +21,24 @@ This repository contains tools that can be used to generate such graphs.
 0. Known issues
 0. Authors
 
+## 0. CHANGES
+
+Major changes take place in v1.2, as it is now able to dump and analyze very large Active Directories without hogging too much RAM.
+Some very large ADs with over 1M objects and 150M ACEs have been processed in a reasonable amount of time (a few hours on a laptop, consuming less than 1GB RAM).
+
+A few false positives were fixed and new control paths were added, so running it again on already tested ADs might be a good idea.
+
 ## 1. INSTALL / PREREQUISITES
 
 ### Note:
 
 - **Dump** step runs on Windows only (tested on Windows 7 and later).
-- **Import**, **Query** and **Visualize** steps should run on anything supporting Neo4j, Java and Ruby. They have been tested on Windows and Linux.
+- **Import**, **Query** and **Visualize** steps can run on the same machine or on anything supporting Neo4j, Java and Ruby. They have been tested on Windows and Linux.
 
 
-### Building steps (or just download the last pre compiled Release from Github):
+### Building steps (or just download the latest pre-compiled, signed binaries from the Github release tab):
 
-- Use an up-to-date Visual Studio to build the 3 solutions in the subfolders of /Dump/Src/. Targets must be:
+- Build the 3 solutions in the subfolders of /Dump/Src/ with an up-to-date Visual Studio (Community version works). Targets must be:
 Release/x64 for AceFilter
 Release/x64 for ControlRelationProviders
 RelADCP/x64 for DirectoryCrawler.
@@ -51,7 +58,7 @@ RelADCP/x64 for DirectoryCrawler.
 
 gem install neography
 
-### Tested software versions
+### Tested software versions (anything more recent should be ok)
 
 - Windows 7+
 - Linux distributions: Ubuntu 14.04 and Debian 8
@@ -97,7 +104,7 @@ If no access to the domain is given, control graphs can be realized from offline
 
 ## 3. DUMP DATA INTO CSV FILES
 
-**Note:** The generated CSVs can take quite a lot of disk space. The Neo4j importer needs them uncompressed anyway.
+**Note:** The Dump.ps1 script configures the outputDir to be a NTFS compressed folder. Flat unicode CSVs files can take quite a lot of disk space otherwise.
 
 Use the powershell script `Dump\Dump.ps1` to dump data from the LDAP directory and SYSVOL.
 The simplest example is:
@@ -132,6 +139,7 @@ This produces some `.csv` and `.log` files as follow:
 - `-ldapPort`: change ldap port (default is `389`). This can be useful for a copied `ntds.dit` re-mounted with `dsamain` since it allows you to use a non standard ldap port.
 - `-useBackupPriv`: use backup privilege to access `-sysvolPath`, which is needed when using a robocopy. You must use an administrator account to use this option.
 - `-generateCmdOnly`: generate the list of commands to use to dump the data, instead of executing these commands. This can be useful on systems where the powershell's execution-policy doesn't allow unsigned scripts to be executed, or on which powershell is not installed in a tested version (v2.0 and later).
+- `-fromExistingDumps`: skip the LDAP request step and work from files found in the Ldap\ folder.
 
 ## 4. IMPORT CSV FILES INTO A GRAPH DATABASE
 
@@ -185,7 +193,7 @@ The `Query/query.rb` program allows you to query the created Neo4j database.
 
 The "automatic mode" will create graphs, paths, and nodes lists for a predefined list of builtin targets:
 
-    ruby query.rb --auto --denyacefile $env:DUMP\relations\*.deny.csv
+    ruby query.rb --full --denyacefile $env:DUMP\relations\*.deny.csv
         [+] running in automatic-mode, lang=en, outdir=out
         [+] control graph for cn=domain admins,cn=users,dc=
         [+] found 13 control nodes, max depth is 5
@@ -316,4 +324,5 @@ queries. You can limit the maximum search depth with the `--maxdepth` option.
 ## 8. AUTHORS
 
 Geraud de Drouas - ANSSI - 2015-2016
-Lucas Bouillot, Emmanuel Gras - ANSSI - Bureau Audits et Inspections - 2014
+
+Lucas Bouillot, Emmanuel Gras - ANSSI - 2014

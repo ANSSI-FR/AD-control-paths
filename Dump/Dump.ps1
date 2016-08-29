@@ -167,6 +167,8 @@ if (!$generateCmdOnly) {
     Foreach($dir in $directories) {
         if(!(Test-Path -Path $dir)) {
             New-Item -ItemType directory -Path $dir | Out-Null
+# No native PS equivalent
+			compact /C $dir | Out-Null
         }
     }
 }
