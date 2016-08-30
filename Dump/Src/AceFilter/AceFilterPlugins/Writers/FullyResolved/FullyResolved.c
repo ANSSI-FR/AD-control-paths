@@ -88,9 +88,11 @@ void IntToOutfile(
     _In_ DWORD value,
     _In_ BOOL hex
     ) {
+	LPTSTR strvalue = NULL;
 	UNREFERENCED_PARAMETER(api);
-    TCHAR strvalue[10 + 1] = { 0 }; // hex:0x + 8, dec:10
-    _sntprintf_s(strvalue, _countof(strvalue), 10, hex ? _T("%#x") : _T("%u"), value);
+
+	strvalue = ApiHeapAllocX(gs_hHeapFullyResolved, 11 * sizeof(TCHAR)); // hex:0x + 8, dec:10
+    _sntprintf_s(strvalue, 11, 10, hex ? _T("%#x") : _T("%u"), value);
     StrToOutfile(nextRecord, position, strvalue);
 }
 
@@ -124,7 +126,7 @@ void FlagsToOutfile(
     _In_ DWORD count
     ) {
     DWORD i = 0, n = 0;
-    size_t len = 0;
+    size_t len = 1;
     LPTSTR str = NULL;
 
     for (i = 0; i < count; i++) {
@@ -244,7 +246,7 @@ BOOL PLUGIN_WRITER_WRITEACE(
     | Object information |
     \********************/
 	PIMPORTED_OBJECT obj = NULL;
-	LPTSTR *nextRecord = { 0 };
+	LPTSTR *nextRecord = NULL;
 
 	nextRecord = ApiHeapAllocX(gs_hHeapFullyResolved, FRE_OUTFILE_HEADER_COUNT * sizeof(LPTSTR));
 	obj = api->Resolver.ResolverGetAceObject(ace);
@@ -280,7 +282,7 @@ BOOL PLUGIN_WRITER_WRITEACE(
     // AceType, AceTypeResolved
     //
     IntToOutfile(api, &nextRecord, aceType, ace->imported.raw->AceType, TRUE);
-    EnumToOutfile(api, &nextRecord, aceTypeResolved, ace->imported.raw->AceType, gc_AceTypeValues, ARRAY_COUNT(gc_AceTypeValues));
+	EnumToOutfile(api, &nextRecord, aceTypeResolved, ace->imported.raw->AceType, gc_AceTypeValues, ARRAY_COUNT(gc_AceTypeValues));
 
     //
     // AceFlags, AceFlagsResolved
@@ -342,10 +344,15 @@ BOOL PLUGIN_WRITER_WRITEACE(
     else if (api->Ace.IsInDefaultSd(ace)) {
         StrToOutfile(&nextRecord, defaultFrom, _T("DefaultSd"));
     }
+	else {
+		StrToOutfile(&nextRecord, defaultFrom, _T("<empty>"));
+	}
 
 	//
 	// Write the whole record
 	//
 	api->InputCsv.CsvWriteNextRecord(gs_hOutfile, nextRecord, NULL);
+	ApiHeapFreeX(gs_hHeapFullyResolved, nextRecord);
+
     return TRUE;
 }

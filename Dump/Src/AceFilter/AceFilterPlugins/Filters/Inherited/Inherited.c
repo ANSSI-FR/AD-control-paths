@@ -37,7 +37,7 @@ void PLUGIN_GENERIC_HELP(
 
     DWORD i = 0;
 
-    API_LOG(Bypass, _T("Filters out ACE for whom the 'INHERITED_ACE' flag is present."));
+    API_LOG(Bypass, _T("Filters out ACE when the 'INHERIT_ONLY_ACE' flag is present."));
     API_LOG(Bypass, _T("If the <inhflags> plugin option is set, keeps ACE with an AceFlags containing at least the specified flags"));
     API_LOG(Bypass, _T("Valid flags which can be specified (comma separated) are : "));
     for (i = 0; i < ARRAY_COUNT(gc_AceFlagsValues); i++) {
@@ -99,7 +99,10 @@ BOOL PLUGIN_FILTER_FILTERACE(
 
 	//Version 2:
 	// Inherit-only means ACE does not apply to the current object. Else, return TRUE and let other filters deal with matching object classes.
-	if (ace->imported.raw->AceFlags & INHERIT_ONLY_ACE)
-		return FALSE;
-	return TRUE;
+	if (gs_InhflagsOpt) {
+		return ((ace->imported.raw->AceFlags & gs_MaskFilter) == 0);
+	}
+	else {
+		return ((ace->imported.raw->AceFlags & INHERIT_ONLY_ACE) == 0);
+	}
 }
