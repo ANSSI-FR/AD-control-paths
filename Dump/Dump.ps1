@@ -151,9 +151,9 @@ Function Execute-Cmd-Wrapper([string]$cmd, [array]$optionalParams, [bool]$maxRet
 # Creating output directories
 #
 #   $outputDir\
-#     |- logs
-#     |- dumps
-#     \- relations
+#     |- Ldap
+#     |- Logs
+#     \- Relations
 #
 $outputDirParent = $outputDir
 $outputDir += "\$date`_$domainDnsName"
@@ -214,7 +214,7 @@ if($dumpLdap -and !$fromExistingDumps.IsPresent) {
    Execute-Cmd-Wrapper -optionalParams $optionalParams -cmd @"
      .\Bin\directorycrawler.exe
    -w '$logLevel'
-   -f '$outputDirParent\Logs\$filesPrefix.dircrwl.log'
+   -f '$outputDir\Logs\$filesPrefix.dircrwl.log'
    -j '.\Bin\ADng_ADCP.json'
    -o '$outputDirParent'
    -s '$domainController'

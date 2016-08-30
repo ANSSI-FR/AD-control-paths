@@ -51,7 +51,7 @@ RelADCP/x64 for DirectoryCrawler.
 0. Install Neo4j: download [neo4j community edition](https://neo4j.com/download/other-releases/) and extract the zip/tar archive (not the installer). **Do not start the Neo4j server before importing your data.**
 
 
-0. Install Ruby from http://rubyinstaller.org/downloads/ or from your distribution.
+0. Install Ruby from https://rubyinstaller.org/downloads/ or from your distribution.
 
 
 0. Install the `neography` gem. In an elevated prompt or with sudo:
@@ -157,10 +157,11 @@ You may need admin permissions to start/stop Neo4j.
   $env:DUMP = "PATH_TO\yyyymmdd_domainfqdn\" 
 
 - In neo4j folder:
-  .\bin\neo4j-import --into data\databases\adcp.db --id-type string  `
-  --nodes $env:DUMP\Ldap\all_nodes.csv  `
-  --relationships $((dir $env:DUMP\relations\*.csv -exclude *.deny.csv) -join ',') `
-  --input-encoding UTF-16LE --multiline-fields=true
+
+>     .\bin\neo4j-import --into data\databases\adcp.db --id-type string  `
+    --nodes $env:DUMP\Ldap\all_nodes.csv  `
+    --relationships $((dir $env:DUMP\relations\*.csv -exclude *.deny.csv) -join ',') `
+    --input-encoding UTF-16LE --multiline-fields=true
 
 
   Headers-related errors will be raised and can be ignored. It is still a good idea to have a look at the bad.log file.
