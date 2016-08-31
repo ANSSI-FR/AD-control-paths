@@ -68,19 +68,6 @@ static CSV_HANDLE gs_hOutfile = 0;
 
 /* --- PUBLIC VARIABLES ----------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
-void StrToOutfile(
-	_Inout_ LPTSTR ** nextRecord,
-	_In_ const FR_FIELD_NAME position,
-    _In_opt_ LPTSTR str
-    ) {
-	if (!STR_EMPTY(str)) {
-		(*nextRecord)[position] = str;
-    }
-	else {
-		(*nextRecord)[position] = _T("<empty>");
-	}
-}
-
 void IntToOutfile(
     _In_ PLUGIN_API_TABLE const * const api,
 	_Inout_ LPTSTR ** nextRecord,
@@ -93,7 +80,7 @@ void IntToOutfile(
 
 	strvalue = ApiHeapAllocX(gs_hHeapFullyResolved, 11 * sizeof(TCHAR)); // hex:0x + 8, dec:10
     _sntprintf_s(strvalue, 11, 10, hex ? _T("%#x") : _T("%u"), value);
-    StrToOutfile(nextRecord, position, strvalue);
+	(*nextRecord)[position] = strvalue;
 }
 
 void EnumToOutfile(
@@ -108,13 +95,13 @@ void EnumToOutfile(
 
     for (i = 0; i < count; i++) {
         if (value == values[i].value) {
-            StrToOutfile(nextRecord, position, values[i].name);
+			(*nextRecord)[position] = ApiStrDupX(gs_hHeapFullyResolved, values[i].name);
             return;
         }
     }
 
     API_LOG(Err, _T("Unknow enum value %u"), value);
-    StrToOutfile(nextRecord, position, _T("<Error>"));
+	(*nextRecord)[position] = ApiStrDupX(gs_hHeapFullyResolved, _T("<Error>"));
 }
 
 void FlagsToOutfile(
@@ -145,7 +132,7 @@ void FlagsToOutfile(
             n++;
         }
     }
-    StrToOutfile(nextRecord, position, str);
+	(*nextRecord)[position] = str;
 }
 
 void SidToOutfile(
@@ -155,13 +142,19 @@ void SidToOutfile(
     _In_ PSID sid
     ) {
     LPTSTR strsid = NULL;
-    BOOL bResult = ConvertSidToStringSid(sid, &strsid);
+	LPTSTR printableSid = NULL;
+	BOOL bResult = FALSE;
+
+    bResult = ConvertSidToStringSid(sid, &strsid);
     if (!bResult) {
         API_LOG(Err, _T("Failed to stringify SID : <%u>"), GetLastError());
-        StrToOutfile(nextRecord, position, _T("<Error>"));
+		(*nextRecord)[position] = ApiStrDupX(gs_hHeapFullyResolved, _T("<Error>"));
         return;
     }
-    StrToOutfile(nextRecord, position, strsid);
+
+	printableSid = ApiStrDupX(gs_hHeapFullyResolved, strsid);
+	LocalFree(strsid);
+	(*nextRecord)[position] = printableSid;
 }
 
 void GuidToOutfile(
@@ -171,19 +164,22 @@ void GuidToOutfile(
     _In_ GUID * guid
     ) {
     LPOLESTR str = NULL;
+	LPTSTR printableGuid = NULL;
+	PIMPORTED_SCHEMA schema = NULL;
+
     HRESULT hr = StringFromCLSID(guid, &str);
     if (hr == S_OK) {
+		printableGuid = ApiStrDupX(gs_hHeapFullyResolved, str);
+		CoTaskMemFree(str);
+		(*nextRecord)[position] = printableGuid;
 
-        StrToOutfile(nextRecord, position, str);
-        //CoTaskMemFree(str);
-
-        PIMPORTED_SCHEMA schema = api->Resolver.GetSchemaByGuid(guid);
-        StrToOutfile(nextRecord, position+1, schema ? schema->imported.dn : NULL);
+        schema = api->Resolver.GetSchemaByGuid(guid);
+		(*nextRecord)[position + 1] = schema ? ApiStrDupX(gs_hHeapFullyResolved, schema->imported.dn) : ApiStrDupX(gs_hHeapFullyResolved, _T("<Error>"));
     }
     else {
         API_LOG(Err, _T("Failed to stringify GUID"));
-        StrToOutfile(nextRecord, position, _T("<Error>"));
-        StrToOutfile(nextRecord, position+1, _T("<Error>"));
+		(*nextRecord)[position] = ApiStrDupX(gs_hHeapFullyResolved, _T("<Error>"));
+		(*nextRecord)[position + 1] = ApiStrDupX(gs_hHeapFullyResolved, _T("<Error>"));
     }
 }
 
@@ -258,7 +254,7 @@ BOOL PLUGIN_WRITER_WRITEACE(
     //
     // Dn
     //
-    StrToOutfile(&nextRecord, dn, obj->imported.dn);
+    nextRecord[dn] = ApiStrDupX(gs_hHeapFullyResolved,obj->imported.dn);
 
     // TODO : ObjectClass
 
@@ -276,7 +272,7 @@ BOOL PLUGIN_WRITER_WRITEACE(
     // Trustee,TrusteeResolved
     //
     SidToOutfile(api, &nextRecord, trustee, api->Ace.GetTrustee(ace));
-    StrToOutfile(&nextRecord, trusteeResolved, api->Resolver.ResolverGetAceTrusteeStr(ace));
+    nextRecord[trusteeResolved] = ApiStrDupX(gs_hHeapFullyResolved, api->Resolver.ResolverGetAceTrusteeStr(ace));
 
     //
     // AceType, AceTypeResolved
@@ -319,8 +315,8 @@ BOOL PLUGIN_WRITER_WRITEACE(
         GuidToOutfile(api, &nextRecord, objectType, api->Ace.GetObjectTypeAce(ace));
     }
 	else {
-		StrToOutfile(&nextRecord, objectType, _T("<empty>"));
-		StrToOutfile(&nextRecord, objectTypeResolved, _T("<empty>"));
+		nextRecord[objectType] = ApiStrDupX(gs_hHeapFullyResolved, _T(""));
+		nextRecord[objectTypeResolved] = ApiStrDupX(gs_hHeapFullyResolved, _T(""));
 	}
 
 
@@ -331,28 +327,28 @@ BOOL PLUGIN_WRITER_WRITEACE(
         GuidToOutfile(api, &nextRecord, inheritedObjectType, api->Ace.GetInheritedObjectTypeAce(ace));
     }
 	else {
-		StrToOutfile(&nextRecord, inheritedObjectType, _T("<empty>"));
-		StrToOutfile(&nextRecord, inheritedObjectTypeResolved, _T("<empty>"));
+		nextRecord[inheritedObjectType] = ApiStrDupX(gs_hHeapFullyResolved, _T(""));
+		nextRecord[inheritedObjectTypeResolved] = ApiStrDupX(gs_hHeapFullyResolved, _T(""));
 	}
 
     //
     // DefaultFrom
     //
     if (obj->imported.adminCount == 1 && api->Ace.IsInAdminSdHolder(ace)) {
-        StrToOutfile(&nextRecord, defaultFrom, _T("AdminSdHolder"));
+		nextRecord[defaultFrom] = ApiStrDupX(gs_hHeapFullyResolved, _T("AdminSdHolder"));
     }
     else if (api->Ace.IsInDefaultSd(ace)) {
-        StrToOutfile(&nextRecord, defaultFrom, _T("DefaultSd"));
+		nextRecord[defaultFrom] = ApiStrDupX(gs_hHeapFullyResolved, _T("DefaultSd"));
     }
 	else {
-		StrToOutfile(&nextRecord, defaultFrom, _T("<empty>"));
+		nextRecord[defaultFrom] = ApiStrDupX(gs_hHeapFullyResolved, _T(""));
 	}
 
 	//
 	// Write the whole record
 	//
 	api->InputCsv.CsvWriteNextRecord(gs_hOutfile, nextRecord, NULL);
-	ApiHeapFreeX(gs_hHeapFullyResolved, nextRecord);
+	ApiHeapFreeArrayX(gs_hHeapFullyResolved, nextRecord, FRE_OUTFILE_HEADER_COUNT);
 
     return TRUE;
 }
