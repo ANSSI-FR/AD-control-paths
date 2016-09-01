@@ -33,7 +33,7 @@ class NeoWrapper
   def initialize()
     @neo = Neography::Rest.new( { :username => "neo4j", :password => "secret" } )
     @maxdepth = 20
-    @color = false
+    @color = true
     @verbose = false
     @nodecache = {}
     @relcache = {}
@@ -259,12 +259,12 @@ class NeoWrapper
 
   def query_path(node, direction, control = nil)
     if @prev_qp_node == node && @prev_qp_direction == direction && @prev_qp_control == control then
-	  return @prev_query_path
-	end
-	@prev_qp_node = node
-	@prev_qp_direction = direction	
+	    return @prev_query_path
+	  end
+	  @prev_qp_node = node
+	  @prev_qp_direction = direction	
     control ||= control_nodes(node, direction, nil)
-	@prev_qp_control = control
+	  @prev_qp_control = control
 	
     query = ""
     case direction
@@ -284,10 +284,11 @@ class NeoWrapper
     debug "cypher query: #{query} (#control=#{control.size})"
     if @denyace then
       @prev_query_path = @neo.execute_query(query, { :control => control, :n => node })["data"].flatten
-	  info "found #{@prev_query_path.size - 1} unfiltered control path(s)"
+	    info "found #{@prev_query_path.size - 1} unfiltered control path(s)"
       denied_paths = validate_paths(@prev_query_path,direction)
       info "denied #{denied_paths.size} path(s)"
       debug "denied_paths: #{denied_paths}"
+# denied_paths indexes are naturally growing down
       denied_paths.map {|i| @prev_query_path.delete_at(i)}
     else
       error "WARNING: --denyacefile was not defined"
@@ -350,33 +351,46 @@ class NeoWrapper
     info "building denyace hash table"
 	h = Hash.new { false }
     denyace.each {|v| h[v] = true }
+  debug "#{h}"
 	transitiveRelations = ["GROUP_MEMBER","PRIMARY_GROUP","SID_HISTORY"]
+  
+  nonAceRelations = ["GROUP_MEMBER","PRIMARY_GROUP","SID_HISTORY",\
+  "CONTAINER_HIERARCHY","GPLINK","AD_OWNER","SYSVOL_OWNER"]
+
 	info "examining each path"
 	paths.map! {|p| p.split("\t")}
 	paths.map.with_index do |p,index| 
 	  path_exploded = []
-	  stringPath = p.join("->")
+	  if @verbose
+      stringPath = p.join("->")  
+    end
+    
 	  while p.length > 1 do
+      if nonAceRelations.include?(p[-2])
+        p.pop(2)
+        next
+      end
 	    path_exploded_end = []
-            path_exploded_end << p[-3] << p[-1] << p[-2]
+      path_exploded_end << p[-3] << p[-1] << p[-2]
 	    path_exploded << path_exploded_end
 	    i = 2
 	    while transitiveRelations.include?(p[-2 * i]) do
-          path_exploded_item = []
+        path_exploded_item = []
 	      path_exploded_item << p[-2 * i - 1] << p[-1] << p[-2]
 	   	  path_exploded << path_exploded_item
-		  i = i + 1
+		    i = i + 1
 	    end
 	    p.pop(2)
 	  end
+#    debug "#{path_exploded}"
 	  if (path_exploded.any? {|v| h[v] })
 	    debug "#{stringPath}"
 	    deniedpaths.insert(0,index)
-        print "-"
-        $stdout.flush
+      print "-"
+      $stdout.flush
 	  else
 	    print "+"
-        $stdout.flush
+      $stdout.flush
 	  end
 	end
 	puts "."
