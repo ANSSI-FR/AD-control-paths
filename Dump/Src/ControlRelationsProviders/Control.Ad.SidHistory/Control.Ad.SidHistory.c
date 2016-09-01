@@ -15,8 +15,8 @@
 static void CallbackSidHistory(
 	_In_ CSV_HANDLE hOutfile,
 	_Inout_ LPTSTR *tokens
-    ) {
-    BOOL bResult = FALSE;
+) {
+	BOOL bResult = FALSE;
 	PSID pSid;
 	LPTSTR listSidHistory = NULL;
 	LPTSTR psSid = NULL;
@@ -24,6 +24,7 @@ static void CallbackSidHistory(
 	DWORD szsSid = 0;
 	CACHE_OBJECT_BY_SID searched = { 0 };
 	PCACHE_OBJECT_BY_SID returned = NULL;
+	LPTSTR sidHistoryTrustee = NULL;
 
 	if (STR_EMPTY(tokens[LdpListSIDHistory]))
 		return;
@@ -44,21 +45,24 @@ static void CallbackSidHistory(
 			return;
 		}
 		ConvertSidToStringSid(pSid, &searched.sid);
+		CharLower(searched.sid);
 		bResult = CacheEntryLookup(
 			ppCache,
 			(PVOID)&searched,
 			&returned
 		);
-		LocalFree(searched.sid);
 		if (!returned) {
 			LOG(Dbg, _T("cannot find object-by-sid entry for <%d>"), tokens[LdpListSIDHistory]);
+			sidHistoryTrustee = searched.sid;
 		}
 		else {
-			bResult = ControlWriteOutline(hOutfile, tokens[LdpListDn], returned->dn, CONTROL_SIDHIST_KEYWORD);
-			if (!bResult) {
-				LOG(Err, _T("Cannot write outline for <%s>"), tokens[LdpListDn]);
-			}
+			sidHistoryTrustee = returned->dn;
 		}
+		bResult = ControlWriteOutline(hOutfile, tokens[LdpListDn], sidHistoryTrustee, CONTROL_SIDHIST_KEYWORD);
+		if (!bResult) {
+			LOG(Err, _T("Cannot write outline for <%s>"), tokens[LdpListDn]);
+		}
+		LocalFree(searched.sid);
 		psSid = _tcstok_s(NULL, _T(";"), &next);
 		free(pSid);
 	}

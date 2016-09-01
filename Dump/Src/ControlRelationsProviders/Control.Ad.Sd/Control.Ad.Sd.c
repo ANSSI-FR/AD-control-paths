@@ -26,6 +26,7 @@ static void CallbackSdOwner(
 	PSID pSidOwner = NULL;
 	CACHE_OBJECT_BY_SID searched = { 0 };
 	PCACHE_OBJECT_BY_SID returned = NULL;
+	LPTSTR owner = NULL;
 
 	if (STR_EMPTY(tokens[LdpAceSd]))
 		return;
@@ -48,21 +49,25 @@ static void CallbackSdOwner(
 		return;
 	}
 	ConvertSidToStringSid(pSidOwner, &searched.sid);
+	CharLower(searched.sid);
 	bResult = CacheEntryLookup(
 		ppCache,
 		(PVOID)&searched,
 		&returned
 	);
-	LocalFree(searched.sid);
 	if (!returned) {
 		LOG(Dbg, _T("cannot find object-by-sid entry for <%d>"), tokens[LdpListPrimaryGroupID]);
-		return;
+		owner = searched.sid;
+	}
+	else {
+		owner = returned->dn;
 	}
 
-	bResult = ControlWriteOutline(hOutfile, returned->dn, tokens[LdpAceDn], CONTROL_AD_OWNER_KEYWORD);
+	bResult = ControlWriteOutline(hOutfile, owner, tokens[LdpAceDn], CONTROL_AD_OWNER_KEYWORD);
 	if (!bResult) {
 		LOG(Err, _T("Cannot write outline for <%s>"), tokens[LdpListDn]);
 	}
+	LocalFree(searched.sid);
 	free(pSd);
 	return;
 }

@@ -93,6 +93,7 @@ BOOL ControlWriteOwnerOutline(
 	PSID pSidOwner = NULL;
 	CACHE_OBJECT_BY_SID searched = { 0 };
 	PCACHE_OBJECT_BY_SID returned = NULL;
+	LPTSTR owner = NULL;
 
 	bResult = GetSecurityDescriptorOwner(pSdOwner, &pSidOwner, &bOwnerDefaulted);
 	if (!bResult) {
@@ -101,19 +102,23 @@ BOOL ControlWriteOwnerOutline(
 	}
 
 	ConvertSidToStringSid(pSidOwner, &searched.sid);
+	CharLower(searched.sid);
 	bResult = CacheEntryLookup(
 		ppCache,
 		(PVOID)&searched,
 		&returned
 	);
-	LocalFree(searched.sid);
+	
 	if (!returned) {
 		LOG(Dbg, _T("cannot find object-by-sid entry for <%d>"), searched.sid);
-		return FALSE;
+		owner = searched.sid;
+	}
+	else {
+		owner = returned->dn;
 	}
 
-	bResult = ControlWriteOutline(hOutfile, returned->dn, ptSlave, ptKeyword);
-
+	bResult = ControlWriteOutline(hOutfile, owner, ptSlave, ptKeyword);
+	LocalFree(searched.sid);
 	return bResult;
 }
 
