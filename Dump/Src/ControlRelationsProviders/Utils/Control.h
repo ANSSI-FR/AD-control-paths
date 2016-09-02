@@ -21,7 +21,6 @@
 
 /* --- DEFINES -------------------------------------------------------------- */
 #define CONTROL_OUTFILE_HEADER      {_T(":START_ID"),_T(":END_ID"),_T(":TYPE")}
-#define CONTROL_OUTFILE_FORMAT      _T("%s\t%s\t%s\r\n")
 #define CONTROL_DEFAULT_LOGLVL      _T("WARN")
 #define OUTFILE_TOKEN_COUNT					3
 
@@ -49,7 +48,10 @@ typedef enum _OBJ_CSV_TOKENS {
 	LdpListGPLink = 5,
 	LdpListPrimaryGroupID = 6,
 	LdpListSIDHistory = 7,
-	LdpListCN = 8
+	LdpListCN = 8,
+	LdpListManagedBy,
+	LdpListRevealOnDemand,
+	LdpListNeverReveal
 } OBJ_CSV_TOKENS;
 
 typedef enum _ACE_CSV_TOKENS {

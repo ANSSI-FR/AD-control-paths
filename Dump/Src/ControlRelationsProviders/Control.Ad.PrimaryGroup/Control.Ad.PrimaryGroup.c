@@ -60,8 +60,8 @@ static void CallbackBuildRidCache(
 	if (STR_EMPTY(tokens[LdpListObjectClass]))
 		return;
 
-	if (_tcscmp(tokens[LdpListObjectClass], _T("top;person;organizationalPerson;user;inetOrgPerson")) && _tcscmp(tokens[LdpListObjectClass], _T("top;group"))
-		&& _tcscmp(tokens[LdpListObjectClass], _T("top;person;organizationalPerson;user;computer")))
+	if (_tcscmp(tokens[LdpListObjectClass], _T("top;person;organizationalperson;user")) && _tcscmp(tokens[LdpListObjectClass], _T("top;group"))
+		&& _tcscmp(tokens[LdpListObjectClass], _T("top;person;organizationalperson;user;computer")) && _tcscmp(tokens[LdpListObjectClass], _T("top;person;organizationalperson;user;inetorgperson")))
 		return;
 
 	if (STR_EMPTY(tokens[LdpListObjectSid]))

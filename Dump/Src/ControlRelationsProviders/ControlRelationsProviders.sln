@@ -77,6 +77,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LibLog", "libdev\LibLog\Lib
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Utils", "Utils", "{663EB981-84B4-4748-8762-351C1E3FE9D5}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Control.Ad.Rodc", "Control.Ad.Rodc\Control.Ad.Rodc.vcxproj", "{368B006E-963A-4AB5-B29B-FAF988FE80EA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Mixed Platforms = Debug|Mixed Platforms
@@ -306,6 +308,24 @@ Global
 		{1D4E068B-ACEE-4C7E-B361-4419377871C8}.VLD|Win32.Build.0 = VLD|Win32
 		{1D4E068B-ACEE-4C7E-B361-4419377871C8}.VLD|x64.ActiveCfg = VLD|x64
 		{1D4E068B-ACEE-4C7E-B361-4419377871C8}.VLD|x64.Build.0 = VLD|x64
+		{368B006E-963A-4AB5-B29B-FAF988FE80EA}.Debug|Mixed Platforms.ActiveCfg = Debug|Win32
+		{368B006E-963A-4AB5-B29B-FAF988FE80EA}.Debug|Mixed Platforms.Build.0 = Debug|Win32
+		{368B006E-963A-4AB5-B29B-FAF988FE80EA}.Debug|Win32.ActiveCfg = Debug|Win32
+		{368B006E-963A-4AB5-B29B-FAF988FE80EA}.Debug|Win32.Build.0 = Debug|Win32
+		{368B006E-963A-4AB5-B29B-FAF988FE80EA}.Debug|x64.ActiveCfg = Debug|x64
+		{368B006E-963A-4AB5-B29B-FAF988FE80EA}.Debug|x64.Build.0 = Debug|x64
+		{368B006E-963A-4AB5-B29B-FAF988FE80EA}.Release|Mixed Platforms.ActiveCfg = Release|Win32
+		{368B006E-963A-4AB5-B29B-FAF988FE80EA}.Release|Mixed Platforms.Build.0 = Release|Win32
+		{368B006E-963A-4AB5-B29B-FAF988FE80EA}.Release|Win32.ActiveCfg = Release|Win32
+		{368B006E-963A-4AB5-B29B-FAF988FE80EA}.Release|Win32.Build.0 = Release|Win32
+		{368B006E-963A-4AB5-B29B-FAF988FE80EA}.Release|x64.ActiveCfg = Release|x64
+		{368B006E-963A-4AB5-B29B-FAF988FE80EA}.Release|x64.Build.0 = Release|x64
+		{368B006E-963A-4AB5-B29B-FAF988FE80EA}.VLD|Mixed Platforms.ActiveCfg = Release|Win32
+		{368B006E-963A-4AB5-B29B-FAF988FE80EA}.VLD|Mixed Platforms.Build.0 = Release|Win32
+		{368B006E-963A-4AB5-B29B-FAF988FE80EA}.VLD|Win32.ActiveCfg = Release|Win32
+		{368B006E-963A-4AB5-B29B-FAF988FE80EA}.VLD|Win32.Build.0 = Release|Win32
+		{368B006E-963A-4AB5-B29B-FAF988FE80EA}.VLD|x64.ActiveCfg = Release|x64
+		{368B006E-963A-4AB5-B29B-FAF988FE80EA}.VLD|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
