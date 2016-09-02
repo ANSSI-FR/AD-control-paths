@@ -18,12 +18,8 @@ static void CallbackRodc(
 	_Inout_ LPTSTR *tokens
 ) {
 	BOOL bResult = FALSE;
-	PSECURITY_DESCRIPTOR pSd;
-	BOOL bOwnerDefaulted = FALSE;
-	PSID pSidOwner = NULL;
-	CACHE_OBJECT_BY_SID searched = { 0 };
-	PCACHE_OBJECT_BY_SID returned = NULL;
-	LPTSTR manager = NULL;
+	LPTSTR ctx = NULL;
+	LPTSTR cacheableDn = NULL;
 
 	// Only way to know we have a rodc
 	if (STR_EMPTY(tokens[LdpListPrimaryGroupID]) || _tcscmp(tokens[LdpListPrimaryGroupID], _T("521")))
@@ -31,52 +27,21 @@ static void CallbackRodc(
 
 	// managedBy
 	if (!STR_EMPTY(tokens[LdpListManagedBy])) {
-		ConvertSidToStringSid(tokens[LdpListManagedBy], &searched.sid);
-		CharLower(searched.sid);
-		bResult = CacheEntryLookup(
-			ppCache,
-			(PVOID)&searched,
-			&returned
-		);
-		if (!returned) {
-			LOG(Dbg, _T("cannot find object-by-sid entry for <%d>"), searched.sid);
-			manager = searched.sid;
-		}
-		else {
-			manager = returned->dn;
-		}
-		bResult = ControlWriteOutline(hOutfile, manager, tokens[LdpListDn], CONTROL_AD_RODC_MANAGED_BY_KEYWORD);
+		bResult = ControlWriteOutline(hOutfile, tokens[LdpListManagedBy], tokens[LdpListDn], CONTROL_AD_RODC_MANAGED_BY_KEYWORD);
 		if (!bResult) {
 			LOG(Err, _T("Cannot write outline for <%s>"), tokens[LdpListDn]);
 		}
-		LocalFree(searched.sid);
 	}
 
 	// Reveal-OnDemand and deny NeverRevealGroup
-	PTCHAR *ctx = NULL;
-	PTCHAR *tok = NULL;
 	if (!STR_EMPTY(tokens[LdpListRevealOnDemand])) {
-		searched.sid = StrNextToken(tokens[LdpListRevealOnDemand], _T(";"), &ctx, &tok);
-		bResult = CacheEntryLookup(
-			ppCache,
-			(PVOID)&searched,
-			&returned
-		);
-		if (!returned) {
-			LOG(Dbg, _T("cannot find object-by-sid entry for <%d>"), searched.sid);
-			manager = searched.sid;
+		while (StrNextToken(tokens[LdpListRevealOnDemand], _T(";"), &ctx, &cacheableDn)) {
+			bResult = ControlWriteOutline(hOutfile, tokens[LdpListDn], cacheableDn, CONTROL_AD_RODC_CACHE_PWD_KEYWORD);
+			if (!bResult) {
+				LOG(Err, _T("Cannot write outline for <%s>"), tokens[LdpListDn]);
+			}
 		}
-		else {
-			manager = returned->dn;
-		}
-		bResult = ControlWriteOutline(hOutfile, manager, tokens[LdpListDn], CONTROL_AD_RODC_MANAGED_BY_KEYWORD);
-		if (!bResult) {
-			LOG(Err, _T("Cannot write outline for <%s>"), tokens[LdpListDn]);
-		}
-		LocalFree(searched.sid);
 	}
-
-
 }
 
 
@@ -87,15 +52,6 @@ int _tmain(
 	_In_ TCHAR * argv[]
 ) {
 	PTCHAR outfileHeader[OUTFILE_TOKEN_COUNT] = CONTROL_OUTFILE_HEADER;
-	PTCHAR ptName = _T("SIDCACHE");
-	bCacheBuilt = FALSE;
-	CacheCreate(
-		&ppCache,
-		ptName,
-		pfnCompare
-	);
-	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackBuildSidCache, GenericUsage);
-	bCacheBuilt = TRUE;
 	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackRodc, GenericUsage);
 
 	return EXIT_SUCCESS;
