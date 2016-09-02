@@ -94,12 +94,12 @@ static void CallbackBuildRidCache(
 	free(pSid);
 	// Do not free as they will be inserted in the cache
 	cacheEntry.dn = (LPTSTR)malloc((_tcslen(tokens[LdpListDn]) + 1) * sizeof(TCHAR));
-	cacheEntry.rid = (LPTSTR)malloc(16);
+	cacheEntry.rid = (LPTSTR)malloc((MAX_RID_SIZE + 1) * sizeof(TCHAR));
 	if (!cacheEntry.dn || !cacheEntry.rid)
 		FATAL(_T("Could not allocate dn/rid <%s>"), tokens[LdpListDn]);
 
 	_tcscpy_s(cacheEntry.dn, _tcslen(tokens[LdpListDn]) + 1, tokens[LdpListDn]);
-	_itot_s(rid, cacheEntry.rid, 8, 10);
+	_itot_s(rid, cacheEntry.rid, MAX_RID_SIZE + 1, 10);
 
 	CacheEntryInsert(
 		ppCache,
@@ -114,6 +114,9 @@ static void CallbackBuildRidCache(
 	}
 	else if (!newElement) {
 		LOG(Dbg, _T("object-by-rid cache entry is not new <%s>"), tokens[LdpListDn]);
+	}
+	else {
+		LOG(Dbg, _T("inserted %s with int %d and str %s"), tokens[LdpListDn], rid, cacheEntry.rid);
 	}
 
 	return;
@@ -133,7 +136,10 @@ int _tmain(
 		pfnCompareRid
 	);
 
+	bCacheBuilt = FALSE;
 	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackBuildRidCache, GenericUsage);
+	bCacheBuilt = TRUE;
 	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackPrimaryGroup, GenericUsage);
+
 	return EXIT_SUCCESS;
 }

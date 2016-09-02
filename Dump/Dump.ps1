@@ -3,7 +3,6 @@
 # 
 Param(
     [string]$outputDir = $null,
-    [string]$filesPrefix = $null,
     [string]$logLevel = 'INFO',
 
     [string]$domainController = $null,
@@ -19,7 +18,7 @@ Param(
     [switch]$ldapOnly = $false,
     [switch]$sysvolOnly = $false,
 	
-	[switch]$fromExistingDumps = $false,
+	  [switch]$fromExistingDumps = $false,
     
     [switch]$help = $false,
     [switch]$generateCmdOnly = $false
@@ -44,7 +43,6 @@ Function Usage([string]$errmsg = $null)
     
     Write-Output "- Required parameters:"
     Write-Output "`t-outputDir <DIR>                : output directory"
-    Write-Output "`t-filesPrefix <PREFIX>           : arbitrary prefix"
     Write-Output "`t-domainController <DC>          : ip/host of the DC to query"
     Write-Output "`t-domainDnsName <DNSNAME>        : dns name of the domain (ex: mydomain.local)"
     
@@ -69,9 +67,6 @@ if($help -or ($args -gt 0)) {
 }
 if(!$outputDir) {
     Usage "-outputDir parameter is required."
-}
-if(!$filesPrefix) {
-    Usage "-filesPrefix parameter is required."
 }
 if(!$domainController) {
     Usage "-domainController parameter is required."
@@ -159,7 +154,7 @@ $outputDirParent = $outputDir
 $outputDir += "\$date`_$domainDnsName"
 $directories = (
     "$outputDir",
-	"$outputDir\Ldap",
+	  "$outputDir\Ldap",
     "$outputDir\Logs",
     "$outputDir\Relations"
 )
@@ -198,6 +193,7 @@ if($fromExistingDumps.IsPresent) {
     Write-Output-And-Global-Log "[+] Working from existing dump files`n"
 }
 
+$filesPrefix = $domainDnsName.Substring(0,2).ToUpper()
 
 # 
 # LDAP data
@@ -227,55 +223,58 @@ Execute-Cmd-Wrapper -cmd @"
 .\Bin\Control.Ad.Container.exe
     -D '$logLevel'
     -L '$outputDir\Logs\$filesPrefix.control.ad.container.log'
-    -I '$outputDir\Ldap\$($domainDnsName.Substring(0,2).ToUpper())_LDAP_obj.csv'
+    -I '$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
     -O '$outputDir\Relations\$filesPrefix.control.ad.container.csv'
-    -s '$domainController'
 "@
 
 Execute-Cmd-Wrapper -cmd @"
 .\Bin\Control.Ad.Gplink.exe
     -D '$logLevel'
     -L '$outputDir\Logs\$filesPrefix.control.ad.gplink.log'
-	-I '$outputDir\Ldap\$($domainDnsName.Substring(0,2).ToUpper())_LDAP_obj.csv'
+	  -I '$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
     -O '$outputDir\Relations\$filesPrefix.control.ad.gplink.csv'
-    -s '$domainController'
 "@
 
 Execute-Cmd-Wrapper -cmd @"
 .\Bin\Control.Ad.Group.exe
     -D '$logLevel'
     -L '$outputDir\Logs\$filesPrefix.control.ad.group.log'
-    -I '$outputDir\Ldap\$($domainDnsName.Substring(0,2).ToUpper())_LDAP_obj.csv'
+    -I '$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
     -O '$outputDir\Relations\$filesPrefix.control.ad.group.csv'
-    -s '$domainController'
 "@
 
 Execute-Cmd-Wrapper -cmd @"
 .\Bin\Control.Ad.Sd.exe
     -D '$logLevel'
     -L '$outputDir\logs\$filesPrefix.control.ad.sd.log'
-	-I '$outputDir\Ldap\$($domainDnsName.Substring(0,2).ToUpper())_LDAP_obj.csv'
-	-A '$outputDir\Ldap\$($domainDnsName.Substring(0,2).ToUpper())_LDAP_ace.csv'
+	  -I '$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
+  	-A '$outputDir\Ldap\$($filesPrefix)_LDAP_ace.csv'
     -O '$outputDir\Relations\$filesPrefix.control.ad.sd.csv'
-    -s '$domainController'
 "@
 
 Execute-Cmd-Wrapper -cmd @"
 .\Bin\Control.Ad.PrimaryGroup.exe
     -D '$logLevel'
     -L '$outputDir\Logs\$filesPrefix.control.ad.primarygroup.log'
-	-I '$outputDir\Ldap\$($domainDnsName.Substring(0,2).ToUpper())_LDAP_obj.csv'
+	  -I '$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
     -O '$outputDir\Relations\$filesPrefix.control.ad.primarygroup.csv'
-    -s '$domainController'
 "@
 
 Execute-Cmd-Wrapper -cmd @"
 .\Bin\Control.Ad.SidHistory.exe
     -D '$logLevel'
     -L '$outputDir\Logs\$filesPrefix.control.ad.sidhistory.log'
-	-I '$outputDir\Ldap\$($domainDnsName.Substring(0,2).ToUpper())_LDAP_obj.csv'
+	  -I '$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
     -O '$outputDir\Relations\$filesPrefix.control.ad.sidhistory.csv'
-    -s '$domainController'
+"@
+
+Execute-Cmd-Wrapper -cmd @"
+.\Bin\Control.Ad.Rodc.exe
+    -D '$logLevel'
+    -L '$outputDir\Logs\$filesPrefix.control.ad.sidhistory.log'
+	  -I '$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
+    -O '$outputDir\Relations\$filesPrefix.control.ad.rodc.csv'
+    -Y '$outputDir\Relations\$filesPrefix.control.ad.rodc.deny.csv'
 "@
 
 # Filter
@@ -288,9 +287,9 @@ Execute-Cmd-Wrapper -cmd @"
     --filters='Inherited,ObjectType,ControlAd'
     --
     msrout='$outputDir\Relations\$filesPrefix.acefilter.ldap.msr.csv'
-    ldpobj='$outputDir\Ldap\$($domainDnsName.Substring(0,2).ToUpper())_LDAP_obj.csv'
-    ldpsch='$outputDir\Ldap\$($domainDnsName.Substring(0,2).ToUpper())_LDAP_sch.csv'
-    ldpace='$outputDir\Ldap\$($domainDnsName.Substring(0,2).ToUpper())_LDAP_ace.csv'
+    ldpobj='$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
+    ldpsch='$outputDir\Ldap\$($filesPrefix)_LDAP_sch.csv'
+    ldpace='$outputDir\Ldap\$($filesPrefix)_LDAP_ace.csv'
 "@
 
 }
@@ -306,10 +305,8 @@ Execute-Cmd-Wrapper -cmd @"
 .\Bin\Control.Sysvol.Sd.exe
     -D '$logLevel'
     -L '$outputDir\Logs\$filesPrefix.control.sysvol.sd.log'
-	-I '$outputDir\Ldap\$($domainDnsName.Substring(0,2).ToUpper())_LDAP_obj.csv'
+	  -I '$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
     -O '$outputDir\Relations\$filesPrefix.control.sysvol.sd.csv'
-    -s '$domainController'
-    -S '$sysvolPath'
 "@
 
 # GPO files ACE filtering
@@ -323,8 +320,8 @@ Execute-Cmd-Wrapper -cmd @"
     --filters='Inherited,ControlFs'
     --
     msrout='$outputDir\Relations\$filesPrefix.acefilter.sysvol.msr.csv'
-    ldpobj='$outputDir\Ldap\$($domainDnsName.Substring(0,2).ToUpper())_LDAP_obj.csv'
-    ldpsch='$outputDir\Ldap\$($domainDnsName.Substring(0,2).ToUpper())_LDAP_sch.csv'
+    ldpobj='$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
+    ldpsch='$outputDir\Ldap\$($filesPrefix)_LDAP_sch.csv'
     sysvol='$sysvolPath'
 "@
 
@@ -337,8 +334,8 @@ Execute-Cmd-Wrapper -cmd @"
 .\Bin\Control.MakeAllNodes.exe
     -D '$logLevel'
     -L '$outputDir\Logs\$filesPrefix.convert.ad.lowercase.log'
-    -I '$outputDir\Ldap\$($domainDnsName.Substring(0,2).ToUpper())_LDAP_obj.csv'
-	-A '$((dir $outputDir\Relations\*.csv -exclude *.deny.csv) -join ',')'
+    -I '$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
+	  -A '$((dir $outputDir\Relations\*.csv -exclude *.deny.csv) -join ',')'
     -O '$outputDir\Ldap\all_nodes.csv'
     -s '$domainController'
 "@

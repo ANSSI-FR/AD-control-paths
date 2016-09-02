@@ -80,13 +80,14 @@ int _tmain(
 ) {
 	PTCHAR outfileHeader[OUTFILE_TOKEN_COUNT] = CONTROL_OUTFILE_HEADER;
 	PTCHAR ptName = _T("SIDCACHE");
-	bCacheBuilt = FALSE;
 
 	CacheCreate(
 		&ppCache,
 		ptName,
 		pfnCompare
 	);
+
+	bCacheBuilt = FALSE;
 	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackBuildSidCache, GenericUsage);
 	bCacheBuilt = TRUE;
 	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackSidHistory, GenericUsage);

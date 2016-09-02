@@ -87,6 +87,7 @@ int _tmain(
 		ptName,
 		pfnCompare
 	);
+	bCacheBuilt = FALSE;
 	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackBuildSidCache, GenericUsage);
 	bCacheBuilt = TRUE;
 	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackSdOwner, GenericUsage);

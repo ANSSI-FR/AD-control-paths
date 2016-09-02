@@ -88,6 +88,7 @@ int _tmain(
 	_In_ TCHAR * argv[]
 ) {
 	PTCHAR outfileHeader[OUTFILE_TOKEN_COUNT] = CONTROL_OUTFILE_HEADER;
+	bCacheBuilt = FALSE;
 	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackContainerHierarchy, GenericUsage);
 	return EXIT_SUCCESS;
 }

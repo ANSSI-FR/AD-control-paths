@@ -53,11 +53,10 @@ static void CallbackBuildDnCache(
 		free(cacheEntry.dn);
 		free(cacheEntry.objectClass);
 	}
-
-	bResult = ControlWriteOutline(hOutfile, tokens[LdpListDn], tokens[LdpListObjectClass], CONTROL_ALLNODES_KEYWORD);
-	if (!bResult) {
-		LOG(Err, _T("Cannot write outline for <%s>"), tokens[LdpListDn]);
-		return;
+	else {
+		bResult = ControlWriteOutline(hOutfile, tokens[LdpListDn], tokens[LdpListObjectClass], CONTROL_ALLNODES_KEYWORD);
+		if (!bResult)
+			LOG(Err, _T("Cannot write outline for <%s>"), tokens[LdpListDn]);
 	}
 }
 
@@ -122,9 +121,10 @@ int _tmain(
 		ptName,
 		pfnCompareDn
 	);
+	bCacheBuilt = FALSE;
 	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackBuildDnCache, GenericUsage);
 	bCacheBuilt = TRUE;
-
 	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackMakeAllNodes, GenericUsage);
+
 	return EXIT_SUCCESS;
 }

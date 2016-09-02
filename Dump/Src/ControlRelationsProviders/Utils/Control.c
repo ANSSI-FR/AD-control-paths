@@ -41,7 +41,7 @@ void ControlParseOptions(
     optind = 1;
     opterr = 0;
 
-    while ((curropt = getopt(argc, argv, _T("hHA:I:O:L:D:"))) != -1) {
+    while ((curropt = getopt(argc, argv, _T("hHA:I:O:Y:L:D:"))) != -1) {
         switch (curropt) {
         case _T('O'): pControlOptions->ptOutfile = optarg; break;
 		case _T('Y'): pControlOptions->ptDenyOutfile = optarg; break;

@@ -23,6 +23,7 @@
 #define CONTROL_OUTFILE_HEADER      {_T(":START_ID"),_T(":END_ID"),_T(":TYPE")}
 #define CONTROL_DEFAULT_LOGLVL      _T("WARN")
 #define OUTFILE_TOKEN_COUNT					3
+#define MAX_RID_SIZE                21
 
 
 /* --- TYPES ---------------------------------------------------------------- */
@@ -89,7 +90,7 @@ typedef void (FN_USAGE_CALLBACK)(
 
 /* --- VARIABLES ------------------------------------------------------------ */
 DWORD gs_recordNumber;
-static BOOL bCacheBuilt = FALSE;
+BOOL bCacheBuilt;
 PCACHE ppCache;
 FN_USAGE_CALLBACK GenericUsage;
 
