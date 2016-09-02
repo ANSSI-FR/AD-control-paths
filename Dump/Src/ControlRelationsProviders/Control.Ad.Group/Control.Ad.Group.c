@@ -13,12 +13,15 @@
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 static void CallbackGroupMember(
 	_In_ CSV_HANDLE hOutfile,
+	_In_ CSV_HANDLE hDenyOutfile,
 	_Inout_ LPTSTR *tokens
 ) {
 	BOOL bResult = FALSE;
 	LPTSTR pMember = NULL;
 	LPTSTR next = NULL;
 	LPTSTR listMember = NULL;
+
+	UNREFERENCED_PARAMETER(hDenyOutfile);
 
 	if (STR_EMPTY(tokens[LdpListMember]))
 		return;

@@ -108,6 +108,7 @@ BOOL SysvolWriteOwner(
 
 static void CallbackLdapGpoOwner(
 	_In_ CSV_HANDLE hOutfile,
+	_In_ CSV_HANDLE hDenyOutfile,
 	_Inout_ LPTSTR *tokens
     ) {
 
@@ -126,6 +127,8 @@ static void CallbackLdapGpoOwner(
     TCHAR tGpoPath[MAX_PATH] = { 0 };
     TCHAR tGpoPathUser[MAX_PATH] = { 0 };
     TCHAR tGpoPathMachine[MAX_PATH] = { 0 };
+
+	UNREFERENCED_PARAMETER(hDenyOutfile);
 
 	if (!tokens[LdpListObjectClass])
 		return;

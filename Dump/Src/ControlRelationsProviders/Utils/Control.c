@@ -44,6 +44,7 @@ void ControlParseOptions(
     while ((curropt = getopt(argc, argv, _T("hHA:I:O:L:D:"))) != -1) {
         switch (curropt) {
         case _T('O'): pControlOptions->ptOutfile = optarg; break;
+		case _T('Y'): pControlOptions->ptDenyOutfile = optarg; break;
 		case _T('I'): pControlOptions->ptInfile = optarg; break;
 		case _T('A'): 
 			if(bCacheBuilt)
@@ -125,9 +126,11 @@ BOOL ControlWriteOwnerOutline(
 
 void CallbackBuildSidCache(
 	_In_ CSV_HANDLE hOutfile,
+	_In_ CSV_HANDLE hDenyOutfile,
 	_In_ LPTSTR *tokens
 ) {
 	UNREFERENCED_PARAMETER(hOutfile);
+	UNREFERENCED_PARAMETER(hDenyOutfile);
 
 	BOOL bResult = FALSE;
 	CACHE_OBJECT_BY_SID cacheEntry = { 0 };
@@ -190,6 +193,7 @@ void ControlMainForeachCsvResult(
 	/* Variables */
 	BOOL bResult = FALSE;
 	CSV_HANDLE hOutfile = CSV_INVALID_HANDLE_VALUE;
+	CSV_HANDLE hDenyOutfile = CSV_INVALID_HANDLE_VALUE;
 	CSV_HANDLE hInfile = CSV_INVALID_HANDLE_VALUE;
 	CONTROL_OPTIONS sControlOptions = { 0 };
 	PTCHAR *pptAttrsListForCsv = ptOutfileHeader;
@@ -213,7 +217,7 @@ void ControlMainForeachCsvResult(
 
 	LOG(Succ, _T("Starting"));
 
-	/* Outfile opening */
+	/* Outfiles opening */
 	if (!sControlOptions.ptOutfile) {
 		FATAL(_T("No outfile specified. Please use -O."));
 	}
@@ -232,7 +236,14 @@ void ControlMainForeachCsvResult(
 		}
 	}
 
-	
+	if (sControlOptions.ptDenyOutfile) {
+		bResult = CsvOpenWrite(sControlOptions.ptDenyOutfile, OUTFILE_TOKEN_COUNT, pptAttrsListForCsv, &hDenyOutfile);
+		if (!bResult) {
+			FATAL(_T("Failed to open CSV Deny outfile <%s>: <err:%#08x>"), sControlOptions.ptDenyOutfile, CsvGetLastError(hDenyOutfile));
+		}
+	}
+
+
 	/* Infiles opening */
 	LOG(Info, _T("Opening infile(s) <%s>"), sControlOptions.ptInfile);
 	listFilename = _tcsdup(sControlOptions.ptInfile);
@@ -251,7 +262,7 @@ void ControlMainForeachCsvResult(
 				if (!STR_EMPTY(tokens[i]))
 					CharLower(tokens[i]);
 			}
-			pfnCallback(hOutfile, tokens);
+			pfnCallback(hOutfile, hDenyOutfile, tokens);
 			CsvRecordArrayHeapFree(tokens, headerCount);
 		}
 		CsvClose(&hInfile);
@@ -263,6 +274,9 @@ void ControlMainForeachCsvResult(
 	
 	/* Done */
 	CsvClose(&hOutfile);
+	if (sControlOptions.ptDenyOutfile) {
+		CsvClose(&hDenyOutfile);
+	}
 }
 
 RTL_GENERIC_COMPARE_RESULTS _Function_class_(RTL_AVL_COMPARE_ROUTINE)  pfnCompare(

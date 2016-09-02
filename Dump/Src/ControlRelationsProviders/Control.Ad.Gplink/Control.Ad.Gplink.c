@@ -16,6 +16,7 @@
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 static void CallbackGpLink(
 	_In_ CSV_HANDLE hOutfile,
+	_In_ CSV_HANDLE hDenyOutfile,
 	_Inout_ LPTSTR *tokens
 ) {
 	/* TODO: Works... But ugly C-str-parsing. Would be better with a regex or smthg */
@@ -27,6 +28,8 @@ static void CallbackGpLink(
 	LPTSTR ptGPLinkOptions = NULL;
 	DWORD dwGPLinkOptions = 0;
 	unsigned int dwGpoDnNbChar = 0;
+
+	UNREFERENCED_PARAMETER(hDenyOutfile);
 
 	if (STR_EMPTY(tokens[LdpListGPLink]))
 		return;

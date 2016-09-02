@@ -14,6 +14,7 @@
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 static void CallbackSidHistory(
 	_In_ CSV_HANDLE hOutfile,
+	_In_ CSV_HANDLE hDenyOutfile,
 	_Inout_ LPTSTR *tokens
 ) {
 	BOOL bResult = FALSE;
@@ -25,6 +26,8 @@ static void CallbackSidHistory(
 	CACHE_OBJECT_BY_SID searched = { 0 };
 	PCACHE_OBJECT_BY_SID returned = NULL;
 	LPTSTR sidHistoryTrustee = NULL;
+
+	UNREFERENCED_PARAMETER(hDenyOutfile);
 
 	if (STR_EMPTY(tokens[LdpListSIDHistory]))
 		return;

@@ -14,11 +14,14 @@
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 static void _Function_class_(FN_CONTROL_CALLBACK_RESULT) CallbackPrimaryGroup(
 	_In_ CSV_HANDLE hOutfile,
+	_In_ CSV_HANDLE hDenyOutfile,
 	_Inout_ LPTSTR *tokens
 ) {
 	BOOL bResult = FALSE;
 	CACHE_OBJECT_BY_RID searched = { 0 };
 	PCACHE_OBJECT_BY_RID returned = NULL;
+
+	UNREFERENCED_PARAMETER(hDenyOutfile);
 
 	if (STR_EMPTY(tokens[LdpListPrimaryGroupID]))
 		return;
@@ -45,9 +48,11 @@ static void _Function_class_(FN_CONTROL_CALLBACK_RESULT) CallbackPrimaryGroup(
 
 static void CallbackBuildRidCache(
 	_In_ CSV_HANDLE hOutfile,
+	_In_ CSV_HANDLE hDenyOutfile,
 	_Inout_ LPTSTR *tokens
 ) {
 	UNREFERENCED_PARAMETER(hOutfile);
+	UNREFERENCED_PARAMETER(hDenyOutfile);
 
 	BOOL bResult = FALSE;
 	CACHE_OBJECT_BY_RID cacheEntry = { 0 };

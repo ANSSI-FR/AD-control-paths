@@ -10,11 +10,11 @@
 
 /* --- TYPES ---------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
-/* --- PRIVATE VARIABLES ---------------------------------------------------- */
 /* --- PUBLIC VARIABLES ----------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 static void CallbackRodc(
 	_In_ CSV_HANDLE hOutfile,
+	_In_ CSV_HANDLE hDenyOutfile,
 	_Inout_ LPTSTR *tokens
 ) {
 	BOOL bResult = FALSE;
@@ -33,10 +33,20 @@ static void CallbackRodc(
 		}
 	}
 
-	// Reveal-OnDemand and deny NeverRevealGroup
+	// Reveal-OnDemand
 	if (!STR_EMPTY(tokens[LdpListRevealOnDemand])) {
 		while (StrNextToken(tokens[LdpListRevealOnDemand], _T(";"), &ctx, &cacheableDn)) {
 			bResult = ControlWriteOutline(hOutfile, tokens[LdpListDn], cacheableDn, CONTROL_AD_RODC_CACHE_PWD_KEYWORD);
+			if (!bResult) {
+				LOG(Err, _T("Cannot write outline for <%s>"), tokens[LdpListDn]);
+			}
+		}
+	}
+	// Deny NeverRevealGroup
+	ctx = NULL;
+	if (!STR_EMPTY(tokens[LdpListNeverReveal])) {
+		while (StrNextToken(tokens[LdpListNeverReveal], _T(";"), &ctx, &cacheableDn)) {
+			bResult = ControlWriteOutline(hDenyOutfile, tokens[LdpListDn], cacheableDn, CONTROL_AD_RODC_CACHE_PWD_KEYWORD);
 			if (!bResult) {
 				LOG(Err, _T("Cannot write outline for <%s>"), tokens[LdpListDn]);
 			}

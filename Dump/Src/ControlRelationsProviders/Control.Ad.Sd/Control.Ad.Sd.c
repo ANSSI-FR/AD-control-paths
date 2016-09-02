@@ -15,6 +15,7 @@
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 static void CallbackSdOwner(
 	_In_ CSV_HANDLE hOutfile,
+	_In_ CSV_HANDLE hDenyOutfile,
 	_Inout_ LPTSTR *tokens
     ) {
     BOOL bResult = FALSE;
@@ -24,6 +25,8 @@ static void CallbackSdOwner(
 	CACHE_OBJECT_BY_SID searched = { 0 };
 	PCACHE_OBJECT_BY_SID returned = NULL;
 	LPTSTR owner = NULL;
+
+	UNREFERENCED_PARAMETER(hDenyOutfile);
 
 	if (STR_EMPTY(tokens[LdpAceSd]))
 		return;

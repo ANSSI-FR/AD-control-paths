@@ -17,12 +17,15 @@
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
 static void CallbackBuildDnCache(
 	_In_ CSV_HANDLE hOutfile,
+	_In_ CSV_HANDLE hDenyOutfile,
 	_In_ LPTSTR *tokens
 ) {
 	BOOL bResult = FALSE;
 	CACHE_OBJECT_BY_DN cacheEntry = { 0 };
 	PCACHE_OBJECT_BY_DN inserted = NULL;
 	BOOL newElement = FALSE;
+
+	UNREFERENCED_PARAMETER(hDenyOutfile);
 
 	if (STR_EMPTY(tokens[LdpListDn]) || STR_EMPTY(tokens[LdpListObjectClass]))
 		return;
@@ -60,6 +63,7 @@ static void CallbackBuildDnCache(
 
 static void CallbackMakeAllNodes(
 	_In_ CSV_HANDLE hOutfile,
+	_In_ CSV_HANDLE hDenyOutfile,
 	_In_ LPTSTR *tokens
 ) {
 	BOOL bResult = FALSE;
@@ -67,6 +71,8 @@ static void CallbackMakeAllNodes(
 	PCACHE_OBJECT_BY_DN inserted = NULL;
 	BOOL newElement = FALSE;
 	DWORD i = 0;
+
+	UNREFERENCED_PARAMETER(hDenyOutfile);
 
 	if (STR_EMPTY(tokens[RelDnMaster]) || STR_EMPTY(tokens[RelDnSlave]))
 		return;

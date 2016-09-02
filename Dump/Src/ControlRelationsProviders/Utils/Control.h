@@ -28,6 +28,7 @@
 /* --- TYPES ---------------------------------------------------------------- */
 typedef struct _CONTROL_OPTIONS {
     PTCHAR ptOutfile;
+	PTCHAR ptDenyOutfile;
 	PTCHAR ptInfile;
     PTCHAR ptLogLevel;
     PTCHAR ptLogFile;
@@ -36,6 +37,7 @@ typedef struct _CONTROL_OPTIONS {
 
 typedef void (FN_CONTROL_CALLBACK_RESULT)(
     _In_ CSV_HANDLE hOutfile,
+	_In_ CSV_HANDLE hDenyOutfile,
     _Inout_ LPTSTR * tokens
     );
 
@@ -87,10 +89,9 @@ typedef void (FN_USAGE_CALLBACK)(
 
 /* --- VARIABLES ------------------------------------------------------------ */
 DWORD gs_recordNumber;
-BOOL bCacheBuilt;
+static BOOL bCacheBuilt = FALSE;
 PCACHE ppCache;
 FN_USAGE_CALLBACK GenericUsage;
-static HANDLE gs_hLogFile = INVALID_HANDLE_VALUE;
 
 
 /* --- PROTOTYPES ----------------------------------------------------------- */
@@ -123,6 +124,7 @@ BOOL ControlWriteOwnerOutline(
 
 void CallbackBuildSidCache(
 	_In_ CSV_HANDLE hOutfile,
+	_In_ CSV_HANDLE hDenyOutfile,
 	_In_ LPTSTR *tokens
 );
 

@@ -23,12 +23,15 @@ static PTCHAR gs_domainNC = NULL;
 //
 static void CallbackContainerHierarchy(
 	_In_ CSV_HANDLE hOutfile,
+	_In_ CSV_HANDLE hDenyOutfile,
 	_Inout_ LPTSTR *tokens
 ) {
 	BOOL bResult = FALSE;
 	PTCHAR *ppExplodedDn = NULL;
 	PTCHAR ptDnParent = NULL;
 	size_t len = 0;
+
+	UNREFERENCED_PARAMETER(hDenyOutfile);
 
 	if (gs_recordNumber == 1)
 		gs_domainNC = _tcsdup(tokens[0]);
