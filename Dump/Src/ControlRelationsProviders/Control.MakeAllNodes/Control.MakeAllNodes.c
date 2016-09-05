@@ -80,7 +80,7 @@ static void CallbackMakeAllNodes(
 		cacheEntry.dn = _tcsdup(tokens[i]);
 		if (!cacheEntry.dn)
 			FATAL(_T("Could not dup dn <%s>"), tokens[i]);
-		cacheEntry.objectClass = _tcsdup(_T("unknown;foreignobject"));
+		cacheEntry.objectClass = _tcsdup(_T("foreignobject;unknown"));
 		if (!cacheEntry.objectClass)
 			FATAL(_T("Could not dup objectclass for dn <%s>"), tokens[i]);
 
