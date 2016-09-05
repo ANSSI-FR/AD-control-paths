@@ -11,7 +11,15 @@ The topic has been presented during a talk at the French conference SSTIC-2014. 
 This repository contains tools that can be used to generate such graphs.
 
 ---
-0. Changes
+## CHANGES
+New control paths are added in v1.2.2: RoDC and LAPS.
+
+Major code changes take place in v1.2, as it is now able to dump and analyze very large Active Directories without hogging too much RAM.
+Some very large ADs with over 1M objects and 150M ACEs have been processed in a reasonable amount of time (a few hours on a laptop, consuming less than 1GB RAM).
+
+A few false positives were fixed and new control paths were added, so running it again on already tested ADs might be a good idea.
+
+---
 0. Install / Prerequisites
 0. Usage context
 0. Dump data into CSV files
@@ -20,13 +28,6 @@ This repository contains tools that can be used to generate such graphs.
 0. Visualize graphs
 0. Known issues
 0. Authors
-
-## 0. CHANGES
-
-Major changes take place in v1.2, as it is now able to dump and analyze very large Active Directories without hogging too much RAM.
-Some very large ADs with over 1M objects and 150M ACEs have been processed in a reasonable amount of time (a few hours on a laptop, consuming less than 1GB RAM).
-
-A few false positives were fixed and new control paths were added, so running it again on already tested ADs might be a good idea.
 
 ## 1. INSTALL / PREREQUISITES
 
@@ -38,10 +39,10 @@ A few false positives were fixed and new control paths were added, so running it
 
 ### Building steps (or just download the latest pre-compiled, signed binaries from the Github release tab):
 
-- Build the 3 solutions in the subfolders of /Dump/Src/ with an up-to-date Visual Studio (Community version works). Targets must be:
-Release/x64 for AceFilter
-Release/x64 for ControlRelationProviders
-RelADCP/x64 for DirectoryCrawler.
+ - Build the 3 solutions in the subfolders of /Dump/Src/ with an up-to-date Visual Studio (Community version works). Targets must be:
+   - Release/x64 for AceFilter
+   - Release/x64 for ControlRelationProviders
+   - RelADCP/x64 for DirectoryCrawler.
 
 ### Installation steps :
 
@@ -111,9 +112,8 @@ The simplest example is:
 
     .\Dump.ps1
         -outputDir        <output directory>
-        -filesPrefix      <arbitrary prefix>
         -domainController <DC ip or host>
-		-domainDnsName    <domain FQDN>
+		    -domainDnsName    <domain FQDN>
         -sysvolPath       <sysvol 'Policies' folder path>
 
 - `-domainController` can be an real domain controller, or a machine exposing the LDAP directory from a re-mounted `ntds.dit` using `dsamain`.

@@ -1,5 +1,14 @@
 # ChangeLog
 
+## [1.2.2] - 2016-09-05
+* LAPS and RoDC new control paths
+* Optimize deny paths validation
+* Fix FullyResolved writer
+
+## [1.2.1] - 2016-08-31
+* Fix DirectoryCrawler logs path
+* Output folders are now compressed through NTFS, for a minimal performance hit
+
 ## [1.2] - 2016-08-26
 * Massive code refactoring through dedicated utils libs
 * New ldap dumper allowing scalability
