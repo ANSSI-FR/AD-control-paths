@@ -30,7 +30,7 @@ PLUGIN_DECLARE_FREESCHEMA;
 
 /* --- DEFINES -------------------------------------------------------------- */
 #define LDPDUMP_ACE_TOKEN_COUNT         (2)
-#define LDPDUMP_OBJ_TOKEN_COUNT        (9)
+#define LDPDUMP_OBJ_TOKEN_COUNT        (12)
 #define LDPDUMP_SCH_TOKEN_COUNT      (5)
 
 #define LDPDUMP_HEADER_FIRST_TOKEN      _T("dn")
@@ -61,7 +61,10 @@ typedef enum _OBJ_TSV_TOKENS {
 	LdpListGPLink = 5,
 	LdpListPrimaryGroupID = 6,
 	LdpListSIDHistory = 7,
-	LdpListCN = 8
+	LdpListCN = 8,
+	LdpListManagedBy,
+	LdpListRevealOnDemand,
+	LdpListNeverReveal,
 } OBJ_TSV_TOKENS;
 
 

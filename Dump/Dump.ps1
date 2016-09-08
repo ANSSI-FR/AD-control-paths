@@ -307,6 +307,7 @@ Execute-Cmd-Wrapper -cmd @"
     -L '$outputDir\Logs\$filesPrefix.control.sysvol.sd.log'
 	  -I '$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
     -O '$outputDir\Relations\$filesPrefix.control.sysvol.sd.csv'
+    -S '$sysvolPath'
 "@
 
 # GPO files ACE filtering
