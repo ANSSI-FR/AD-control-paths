@@ -32,10 +32,7 @@ PLUGIN_DECLARE_FREESCHEMA;
 #define LDPDUMP_ACE_TOKEN_COUNT         (2)
 #define LDPDUMP_OBJ_TOKEN_COUNT        (12)
 #define LDPDUMP_SCH_TOKEN_COUNT      (5)
-
 #define LDPDUMP_HEADER_FIRST_TOKEN      _T("dn")
-
-#define OID_MS_AD_CLASS_SUBSTR          _T("1.2.840.113556.1.5.")
 
 
 /* --- TYPES ---------------------------------------------------------------- */
@@ -248,7 +245,7 @@ BOOL PLUGIN_IMPORTER_GETNEXTACE(
 		API_FATAL(_T("reading ACE while 'ldpace' option has not been specified"));
 	}
 
-	if (!gs_CurrentDacl || gs_CurrentAceIndex >= gs_CurrentDacl->AceCount) {
+	while (!gs_CurrentDacl || gs_CurrentAceIndex >= gs_CurrentDacl->AceCount) {
 		// get the next DACL
 		while (!isSDPresent) {
 			API_LOG(Dbg, _T("Getting next DACL..."));
@@ -276,34 +273,44 @@ BOOL PLUGIN_IMPORTER_GETNEXTACE(
 		}
 
 		bResult = GetSecurityDescriptorDacl(gs_CurrentSd, &bDaclPresent, &gs_CurrentDacl, &bDaclDefaulted);
-		if (!bResult) {
+		if (!bResult || !bDaclPresent) {
 			API_FATAL(_T("Cannot get DACL for <%s> : <%u>"), gs_AceTokens[LdpAceDn], GetLastError());
 		}
-		if (!bDaclPresent) {
-			API_FATAL(_T("No DACL present for <%s>"), gs_AceTokens[LdpAceDn]);
+		else if (!gs_CurrentDacl) {
+			API_LOG(Dbg, _T("NULL DACL for <%s>, object is UNSECURED, returning Full Access for Everyone"), gs_AceTokens[LdpAceDn]);
+			ace->imported.source = AceFromActiveDirectory;
+			ace->imported.raw = ApiHeapAllocX(gs_hHeapLdapDump, 20);
+			api->Common.Unhexify((PBYTE)(ace->imported.raw), _T("00021400FF010F00010100000000000100000000"));
+			ace->imported.objectDn = ApiStrDupX(gs_hHeapLdapDump, gs_AceTokens[LdpAceDn]);
+			if (!IsValidSid(api->Ace.GetTrustee(ace))) {
+				API_FATAL(_T("ace does not have a valid trustee sid <%s>"), ace->imported.objectDn);
+			}
+			gs_CurrentAceIndex++;
+			return TRUE;
 		}
-
+		else if (gs_CurrentDacl->AceCount == 0) {
+			API_LOG(Dbg, _T("Empty DACL for <%s>, no access except by owner"), gs_AceTokens[LdpAceDn]);
+			isSDPresent = FALSE;
+			continue;
+		}
+		else {
+			API_LOG(Dbg, _T("Getting ACE <%u/%u> for <%s>"), gs_CurrentAceIndex + 1, gs_CurrentDacl->AceCount, gs_AceTokens[LdpAceDn]);
+		}
 	}
-
-
-	API_LOG(Dbg, _T("Getting ACE <%u/%u> for <%s>"), gs_CurrentAceIndex + 1, gs_CurrentDacl->AceCount, gs_AceTokens[LdpAceDn]);
-
 	// Get the next ACE in the current DACL and inc the index
 	bResult = GetAce(gs_CurrentDacl, gs_CurrentAceIndex, &currentAce);
 	if (!bResult) {
 		API_FATAL(_T("Cannot get ACE <%u/%u> of <%s>"), gs_CurrentAceIndex + 1, gs_CurrentDacl->AceCount, gs_AceTokens[LdpAceDn]);
 	}
-
 	// Import the ACE
 	ace->imported.source = AceFromActiveDirectory;
-	ace->imported.raw = ApiHeapAllocX(gs_hHeapLdapDump,currentAce->AceSize);
+	ace->imported.raw = ApiHeapAllocX(gs_hHeapLdapDump, currentAce->AceSize);
 	memcpy(ace->imported.raw, currentAce, currentAce->AceSize);
-	ace->imported.objectDn = ApiStrDupX(gs_hHeapLdapDump,gs_AceTokens[LdpAceDn]);
+	ace->imported.objectDn = ApiStrDupX(gs_hHeapLdapDump, gs_AceTokens[LdpAceDn]);
 	if (!IsValidSid(api->Ace.GetTrustee(ace))) {
 		API_FATAL(_T("ace does not have a valid trustee sid <%s>"), ace->imported.objectDn);
 	}
 	gs_CurrentAceIndex++;
-
 	return TRUE;
 }
 
@@ -332,7 +339,7 @@ BOOL PLUGIN_IMPORTER_GETNEXTOBJ(
 		if (!STR_EMPTY(tokens[i]))
 			CharLower(tokens[i]);
 	}
-	obj->imported.dn = ApiStrDupX(gs_hHeapLdapDump,tokens[LdpListDn]);
+	obj->imported.dn = ApiStrDupX(gs_hHeapLdapDump, tokens[LdpListDn]);
 	obj->imported.adminCount = STR_EMPTY(tokens[LdpListAdminCount]) ? 0 : 1;
 
 	if (!STR_EMPTY(tokens[LdpListObjectClass]))
@@ -345,7 +352,7 @@ BOOL PLUGIN_IMPORTER_GETNEXTOBJ(
 			i++;
 		}
 		obj->computed.objectClassCount = i;
-		obj->imported.objectClassesNames = ApiHeapAllocX(gs_hHeapLdapDump,(obj->computed.objectClassCount + 1) * sizeof(*(obj->imported.objectClassesNames)));
+		obj->imported.objectClassesNames = ApiHeapAllocX(gs_hHeapLdapDump, (obj->computed.objectClassCount + 1) * sizeof(*(obj->imported.objectClassesNames)));
 
 		i = 0;
 		objectClassList = ApiStrDupX(gs_hHeapLdapDump, tokens[LdpListObjectClass]);
@@ -398,7 +405,7 @@ BOOL PLUGIN_IMPORTER_GETNEXTSCH(
 		if (!STR_EMPTY(tokens[i]))
 			CharLower(tokens[i]);
 	}
-	sch->imported.dn = ApiStrDupX(gs_hHeapLdapDump,tokens[LdpSchDn]);
+	sch->imported.dn = ApiStrDupX(gs_hHeapLdapDump, tokens[LdpSchDn]);
 	sch->imported.defaultSecurityDescriptor = STR_EMPTY(tokens[LdpSchDefaultSecurityDescriptor]) ? 0 : ApiStrDupX(gs_hHeapLdapDump, tokens[LdpSchDefaultSecurityDescriptor]);
 	sch->imported.lDAPDisplayName = STR_EMPTY(tokens[LdpSchLDAPDisplayName]) ? 0 : ApiStrDupX(gs_hHeapLdapDump, tokens[LdpSchLDAPDisplayName]);
 
