@@ -168,10 +168,12 @@ if (!$generateCmdOnly) {
     }
 }
 
+
 # 
 # Start
 # 
-$globalLogFile = "$outputDir\logs\$filesPrefix.global.log"
+$filesPrefix = $domainDnsName.Substring(0,2).ToUpper()
+$globalLogFile = "$outputDir\Logs\$filesPrefix.global.log"
 If(Test-Path -Path $globalLogFile) {
     Clear-Content $globalLogFile
 }
@@ -193,27 +195,20 @@ if($fromExistingDumps.IsPresent) {
     Write-Output-And-Global-Log "[+] Working from existing dump files`n"
 }
 
-$filesPrefix = $domainDnsName.Substring(0,2).ToUpper()
-
-# 
-# LDAP data
-# 
-$optionalParams = (
-    ($ldapPort,         "-n '$ldapPort'"),
-    ($user,             "-l '$user' -p '$password'"),
-    ($domainDnsName,    "-d '$domainDnsName'")
-)
-
 if($dumpLdap -and !$fromExistingDumps.IsPresent) {
 
 # Dump
-   Execute-Cmd-Wrapper -optionalParams $optionalParams -cmd @"
+   Execute-Cmd-Wrapper -cmd @"
      .\Bin\directorycrawler.exe
    -w '$logLevel'
    -f '$outputDir\Logs\$filesPrefix.dircrwl.log'
    -j '.\Bin\ADng_ADCP.json'
    -o '$outputDirParent'
    -s '$domainController'
+   -n '$ldapPort'
+   -d '$domainDnsName'
+   -l '$user'
+   -p '$password'
 "@
 }
 
@@ -299,6 +294,21 @@ Execute-Cmd-Wrapper -cmd @"
 # 
 if($dumpSysvol) {
 
+#
+# net use sysvol in case of explicit authentication
+#
+if([bool]$user -bAnd [bool]$password -bAnd ![bool]$ldapOnly) {
+    Write-Output-And-Global-Log "[+] Mapping SYSVOL"
+    $secstr = convertto-securestring -String $password -AsPlainText -Force
+    $cred = new-object -typename System.Management.Automation.PSCredential -argumentlist $user, $secstr
+    for($j=67;gdr($driveName=[char]$j++)2>0){}
+    Execute-Cmd-Wrapper -maxRetVal 1 -cmd @"
+    New-PSDrive -PSProvider FileSystem -Root '$sysvolPath' -Persist -Name '$driveName' -Credential `$cred -Scope Global
+"@
+    $sysvolPath = $driveName + ':'
+}
+
+
 # GPO Owners
 $optionalParams += , ($useBackupPriv, "-B")
 Execute-Cmd-Wrapper -cmd @"
@@ -308,6 +318,7 @@ Execute-Cmd-Wrapper -cmd @"
 	  -I '$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
     -O '$outputDir\Relations\$filesPrefix.control.sysvol.sd.csv'
     -S '$sysvolPath'
+#   -B
 "@
 
 # GPO files ACE filtering
@@ -324,7 +335,17 @@ Execute-Cmd-Wrapper -cmd @"
     ldpobj='$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
     ldpsch='$outputDir\Ldap\$($filesPrefix)_LDAP_sch.csv'
     sysvol='$sysvolPath'
+#    usebackpriv=1
 "@
+
+#
+# Deleting net use sysvol in case of explicit authentication
+#
+if([bool]$user -bAnd [bool]$password -bAnd ![bool]$ldapOnly) {
+    Execute-Cmd-Wrapper -cmd @"
+    Remove-PSDrive -Name '$driveName'
+"@
+}
 
 }
 
@@ -338,8 +359,8 @@ Execute-Cmd-Wrapper -cmd @"
     -I '$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
 	  -A '$((dir $outputDir\Relations\*.csv -exclude *.deny.csv) -join ',')'
     -O '$outputDir\Ldap\all_nodes.csv'
-    -s '$domainController'
 "@
+
 
 
 # 

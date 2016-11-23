@@ -51,13 +51,19 @@ A few false positives were fixed and new control paths were added, so running it
 
 0. Install Neo4j: download [neo4j community edition](https://neo4j.com/download/other-releases/) and extract the zip/tar archive (not the installer). **Do not start the Neo4j server before importing your data.**
 
+  - Fix line 68 in bin\Neo4j-Management\Merge-Neo4jJavaSettings.ps1 to: If (-not $Source -contains $thisSetting) {
+  - Install as admin: .\bin\neo4j.bat install-service
 
 0. Install Ruby from https://rubyinstaller.org/downloads/ or from your distribution.
 
 
 0. Install the `neography` gem. In an elevated prompt or with sudo:
 
-gem install neography
+  gem install neography
+  
+If installing on a machine with no Internet connection, grab the gems cache from your Ruby install folder in lib\ruby\gems\<version>\cache, then copy it over and run for all missing gems:
+  
+  gem install -f --local <Path_to>\<name>.gem
 
 ### Tested software versions (anything more recent should be ok)
 
@@ -132,7 +138,7 @@ This produces some `.csv` and `.log` files as follow:
 - `-user` and `-password`: use explicit authentication (by default implicit authentication is used). The username can be specified in the form `DOMAIN\username`, which can be useful to dump a remote domain accessible through a trust.
     If you don't want your password to appear in the command line but still use explicit authentication use the following `runas` command, then launch the `Dump.ps1` script without `-user` and `-password` options:
 
-        C:\> runas /netonly /user:DOM\username cmd.exe
+        C:\> runas /netonly /user:DOM\username powershell.exe
   
 - `-logLevel`: change log and output verbosity (possible values are `ALL`, `DBG`, `INFO` (default), `WARN`, `ERR`, `SUCC` and `NONE`).
 - `-ldapOnly` and `-sysvolOnly`: dump only data from the LDAP directory (respectively from the SYSVOL).
