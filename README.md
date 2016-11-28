@@ -54,7 +54,7 @@ A few false positives were fixed and new control paths were added, so running it
   - Fix line 68 in bin\Neo4j-Management\Merge-Neo4jJavaSettings.ps1 to: If (-not $Source -contains $thisSetting) {
   - Install as admin: .\bin\neo4j.bat install-service
 
-0. Install Ruby from https://rubyinstaller.org/downloads/ or from your distribution.
+0. Install Ruby from https://rubyinstaller.org/downloads/ or from your distribution. A 64 bits version is recommended.
 
 
 0. Install the `neography` gem. In an elevated prompt or with sudo:
@@ -111,6 +111,9 @@ If no access to the domain is given, control graphs can be realized from offline
 
 ## 3. DUMP DATA INTO CSV FILES
 
+**Warning** Accessing the Sysvol share from a non-domain machine can be blocked by UNC Paths hardening, which is a client-side parameter enabled by default since Windows 10. Disable it like this:
+Set-ItemProperty -Path HKLM:\Software\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths -Name "\\*\SYSVOL" -Value "RequireMutualAuthentication=0"
+
 **Note:** The Dump.ps1 script configures the outputDir to be a NTFS compressed folder. Flat unicode CSVs files can take quite a lot of disk space otherwise.
 
 Use the powershell script `Dump\Dump.ps1` to dump data from the LDAP directory and SYSVOL.
@@ -120,10 +123,10 @@ The simplest example is:
         -outputDir        <output directory>
         -domainController <DC ip or host>
 		    -domainDnsName    <domain FQDN>
-        -sysvolPath       <sysvol 'Policies' folder path>
 
 - `-domainController` can be an real domain controller, or a machine exposing the LDAP directory from a re-mounted `ntds.dit` using `dsamain`.
 - `-sysvolPath` can be a network path (example `\\192.168.25.123\sysvol\domain.local\Policies`) or a path to a local robocopy of this folder.
+- Otherwise sysvolPath defaults to `\\domainController\sysvol\domainDnsName\Policies`.
 
 This produces some `.csv` and `.log` files as follow:
 

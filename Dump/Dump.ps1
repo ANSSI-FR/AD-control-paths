@@ -19,6 +19,8 @@ Param(
     [switch]$sysvolOnly = $false,
 	
 	  [switch]$fromExistingDumps = $false,
+    [switch]$forceOverwrite = $false,
+    [switch]$resume = $false,
     
     [switch]$help = $false,
     [switch]$generateCmdOnly = $false
@@ -48,7 +50,7 @@ Function Usage([string]$errmsg = $null)
     
     Write-Output "- Optional parameters:"
     Write-Output "`t-help                           : show this help"
-    Write-Output "`t-sysvolPath <PATH>              : path of the 'Policies' folder of the sysvol"
+    Write-Output "`t-sysvolPath <PATH>              : path of the 'Policies' folder of the sysvol (default: use target DC)"
     Write-Output "`t-user <USRNAME> -password <PWD> : username and password to use for explicit authentication"
     Write-Output "`t-logLevel <LVL>                 : log level, possibles values are ALL,DBG,INFO(default),WARN,ERR,SUCC,NONE"
     Write-Output "`t-ldapPort <PORTNUM>             : ldap port to use (default is 389)"
@@ -56,7 +58,9 @@ Function Usage([string]$errmsg = $null)
     Write-Output "`t-useBackupPriv                  : use backup privilege to access -sysvolPath"
     Write-Output "`t-ldapOnly                       : only dump data from the LDAP directory"
     Write-Output "`t-sysvolOnly                     : only dump data from the sysvol"
-	Write-Output "`t-fromExistingDumps              : use previous directorycrawler dump files in target folder"
+    Write-Output "`t-forceOverwrite                 : overwrite any previous same-day, same-target dump files"
+    Write-Output "`t-resume                         : resume from the first non-successful command"
+  	Write-Output "`t-fromExistingDumps              : use previous directorycrawler dump files in target folder"
     Write-Output "`t-generateCmdOnly                : generate a list of commands to dump data, instead of executing them"
 
     Break
@@ -83,8 +87,8 @@ if($ldapPort -lt 0) {
 if($ldapOnly.IsPresent -and $sysvolOnly.IsPresent) {
     Usage "-ldapOnly and -sysvolOnly cannot be used at the same time"
 }
-if(!($sysvolPath) -and $dumpSysvol) {
-    Usage "-sysvolPath parameter is required."
+if($forceOverwrite.IsPresent -and $resume.IsPresent) {
+    Usage "-forceOverwrite and -resume cannot be used at the same time"
 }
 
 #
@@ -115,7 +119,15 @@ Function Execute-Cmd-Wrapper([string]$cmd, [array]$optionalParams, [bool]$maxRet
     
     if($generateCmdOnly) {
         Write-Output $cmd
-    } else {
+    }
+    elseif($resume -and (Select-String -Path $checkpointFile -Pattern $cmd -Context 0,2 -SimpleMatch | Out-String | Select-String -Pattern "Return : OK")) {
+        Write-Output-And-Global-Log "********************"
+        Write-Output-And-Global-Log "* Command: $cmd"
+        Write-Output-And-Global-Log "* Command previously successful in checkpoint, skipping."
+        Write-Output-And-Global-Log "* Return : OK - 0"
+        Write-Output-And-Global-Log "********************`n"
+    }
+    else {
         Try {
             Write-Output-And-Global-Log "********************"
             Write-Output-And-Global-Log "* Command: $cmd"
@@ -123,7 +135,7 @@ Function Execute-Cmd-Wrapper([string]$cmd, [array]$optionalParams, [bool]$maxRet
             $timer = [Diagnostics.Stopwatch]::StartNew()
             Invoke-Expression $cmd
             if(($LASTEXITCODE -lt 0) -or ($LASTEXITCODE -gt $maxRetVal)) {
-                throw "return code is non-zero ($LASTEXITCODE)"
+                throw "return code out-of-range ($LASTEXITCODE)"
             }
         } Catch {
             $error = $_.Exception.Message
@@ -134,6 +146,9 @@ Function Execute-Cmd-Wrapper([string]$cmd, [array]$optionalParams, [bool]$maxRet
             Write-Output-And-Global-Log "* Time   : $($timer.Elapsed)"
             if($error) {
                 Write-Output-And-Global-Log "* Return : FAIL - $error"
+                $globalTimer.Stop()
+                Write-Output-And-Global-Log "[+] Done. Total time: $($globalTimer.Elapsed)`n"
+                exit
             } else {
                 Write-Output-And-Global-Log "* Return : OK - $LASTEXITCODE"
             }
@@ -141,6 +156,11 @@ Function Execute-Cmd-Wrapper([string]$cmd, [array]$optionalParams, [bool]$maxRet
         }
     }
 }
+
+# 
+# Start
+# 
+$globalTimer = [Diagnostics.Stopwatch]::StartNew()
 
 # 
 # Creating output directories
@@ -152,6 +172,7 @@ Function Execute-Cmd-Wrapper([string]$cmd, [array]$optionalParams, [bool]$maxRet
 #
 $outputDirParent = $outputDir
 $outputDir += "\$date`_$domainDnsName"
+$filesPrefix = $domainDnsName.Substring(0,2).ToUpper()
 $directories = (
     "$outputDir",
 	  "$outputDir\Ldap",
@@ -166,18 +187,25 @@ if (!$generateCmdOnly) {
 			compact /C $dir | Out-Null
         }
     }
-}
-
-
-# 
-# Start
-# 
-$filesPrefix = $domainDnsName.Substring(0,2).ToUpper()
 $globalLogFile = "$outputDir\Logs\$filesPrefix.global.log"
-If(Test-Path -Path $globalLogFile) {
+$checkpointFile = "$outputDir\Logs\$filesPrefix.checkpoint.log"
+if((Test-Path -Path $globalLogFile) -and $forceOverwrite) {
     Clear-Content $globalLogFile
 }
-$globalTimer = [Diagnostics.Stopwatch]::StartNew()
+elseif((Test-Path -Path $globalLogFile) -and !$forceOverwrite -and !$resume) {
+    Usage "Previous log file detected, use -forceOverwrite to start over or -resume"
+}
+elseif((Test-Path -Path $globalLogFile) -and $resume) {
+    Copy-Item $globalLogFile $checkpointFile
+    Clear-Content $globalLogFile
+}
+}
+
+if (!$sysvolPath) {
+  $sysvolPath = '\\'+$domainController+'\SYSVOL\'+$domainDnsName+'\Policies'
+  Write-Output-And-Global-Log "[+] Using default Sysvol path $sysvolPath`n"
+}
+
 Write-Output-And-Global-Log "[+] Starting"
 if($user) {
     Write-Output-And-Global-Log "[+] Using explicit authentication with username '$user'"
@@ -196,24 +224,27 @@ if($fromExistingDumps.IsPresent) {
 }
 
 if($dumpLdap -and !$fromExistingDumps.IsPresent) {
+# 
+# LDAP data
+# 
+$optionalParams = (
+    ($ldapPort,         "-n '$ldapPort'"),
+    ($user,             "-l '$user' -p '$password'"),
+    ($domainDnsName,    "-d '$domainDnsName'")
+)
 
 # Dump
-   Execute-Cmd-Wrapper -cmd @"
+   Execute-Cmd-Wrapper -optionalParams $optionalParams -cmd @"
      .\Bin\directorycrawler.exe
    -w '$logLevel'
    -f '$outputDir\Logs\$filesPrefix.dircrwl.log'
    -j '.\Bin\ADng_ADCP.json'
    -o '$outputDirParent'
    -s '$domainController'
-   -n '$ldapPort'
-   -d '$domainDnsName'
-   -l '$user'
-   -p '$password'
 "@
 }
 
 if($dumpLdap) {
-
 Execute-Cmd-Wrapper -cmd @"
 .\Bin\Control.Ad.Container.exe
     -D '$logLevel'
@@ -298,14 +329,22 @@ if($dumpSysvol) {
 # net use sysvol in case of explicit authentication
 #
 if([bool]$user -bAnd [bool]$password -bAnd ![bool]$ldapOnly) {
-    Write-Output-And-Global-Log "[+] Mapping SYSVOL"
+    Write-Output-And-Global-Log "[+] Mapping SYSVOL $($sysvolPath)"
     $secstr = convertto-securestring -String $password -AsPlainText -Force
     $cred = new-object -typename System.Management.Automation.PSCredential -argumentlist $user, $secstr
     for($j=67;gdr($driveName=[char]$j++)2>0){}
-    Execute-Cmd-Wrapper -maxRetVal 1 -cmd @"
-    New-PSDrive -PSProvider FileSystem -Root '$sysvolPath' -Persist -Name '$driveName' -Credential `$cred -Scope Global
-"@
+    New-PSDrive -PSProvider FileSystem -Root $sysvolPath -Name $driveName -Credential $cred -Scope Global -Persist
     $sysvolPath = $driveName + ':'
+    if (Test-Path $sysvolPath) {
+      Write-Output-And-Global-Log "[+] Mapping successful"
+    }
+    else {
+      Write-Output-And-Global-Log "[-] Mapping FAILED"
+      $globalTimer.Stop()
+      Write-Output-And-Global-Log "[+] Done. Total time: $($globalTimer.Elapsed)`n"
+      exit
+    }
+    
 }
 
 
@@ -318,7 +357,6 @@ Execute-Cmd-Wrapper -cmd @"
 	  -I '$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
     -O '$outputDir\Relations\$filesPrefix.control.sysvol.sd.csv'
     -S '$sysvolPath'
-#   -B
 "@
 
 # GPO files ACE filtering
@@ -335,16 +373,14 @@ Execute-Cmd-Wrapper -cmd @"
     ldpobj='$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
     ldpsch='$outputDir\Ldap\$($filesPrefix)_LDAP_sch.csv'
     sysvol='$sysvolPath'
-#    usebackpriv=1
 "@
 
 #
 # Deleting net use sysvol in case of explicit authentication
 #
 if([bool]$user -bAnd [bool]$password -bAnd ![bool]$ldapOnly) {
-    Execute-Cmd-Wrapper -cmd @"
-    Remove-PSDrive -Name '$driveName'
-"@
+    Write-Output-And-Global-Log "[+] Unmapping SYSVOL"
+    Remove-PSDrive -Name $driveName
 }
 
 }
