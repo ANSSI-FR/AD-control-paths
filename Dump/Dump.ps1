@@ -206,6 +206,12 @@ if (!$sysvolPath) {
   Write-Output-And-Global-Log "[+] Using default Sysvol path $sysvolPath`n"
 }
 
+Write-Output-And-Global-Log "Current arguments:"
+foreach ($key in $MyInvocation.BoundParameters.keys)
+{
+    $value = (get-variable $key).Value 
+    Write-Output-And-Global-Log "$key -> $value"
+}
 Write-Output-And-Global-Log "[+] Starting"
 if($user) {
     Write-Output-And-Global-Log "[+] Using explicit authentication with username '$user'"
@@ -241,6 +247,7 @@ $optionalParams = (
    -j '.\Bin\ADng_ADCP.json'
    -o '$outputDirParent'
    -s '$domainController'
+   -c '$filesPrefix'
 "@
 }
 
