@@ -51,11 +51,11 @@ OPTIONS:
   GENERIC: automatic operations mode
   
     --quick FILENAME: create shortest control graphs/paths/nodes to "cn=domain admins,"
-	                   in DIRECTORY (default is .\out\)
+	                    in DIRECTORY (default is .\out\)
 	
-	--full DIRECTORY: full audit mode (very long)
+	  --full DIRECTORY: full audit mode (very long)
                       create control graphs/paths/nodes for many default targets (defined in lib/defaults.rb)
-					  in DIRECTORY (default is .\out\)
+			          		  in DIRECTORY (default is .\out\)
 
   --------------------------------------------------------------------------------
   SPECIFIC OPERATIONS: specify the operation you want to perform
@@ -121,9 +121,12 @@ opts.each do |opt, arg|
   when '--help'
     usage
   when '--denyacefile'
-    w.info "loading deny ace file \'#{arg}\'"
-	w.denyace = CSV.read(arg,{:encoding => 'utf-16le:utf-8'})
-	  
+    w.info "loading deny ace files \'#{arg}\'"
+    w.denyace = []
+    arg.split(',').each do |denyfile|
+      w.denyace += CSV.read(denyfile,{:encoding => 'utf-16le:utf-8'})[1 .. -1]
+	  end
+    w.debug "denied ace: \'#{w.denyace}\'"
   when '--password'
     w.info "setting REST client password to \'#{arg}\'"
     w.set_password arg
@@ -154,8 +157,8 @@ opts.each do |opt, arg|
     infos[:outdir] = (arg.size > 0) ? arg : "out"
   when '--quick'
     infos[:quick] = true
-	infos[:auto] = false
-	infos[:outdir] = (arg.size > 0) ? arg : "out"
+	  infos[:auto] = false
+	  infos[:outdir] = (arg.size > 0) ? arg : "out"
   when '--type'
     infos[:type] = arg.to_sym
   when '--direction'

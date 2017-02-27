@@ -45,7 +45,7 @@ Function Usage([string]$errmsg = $null)
     
     Write-Output "- Required parameters:"
     Write-Output "`t-outputDir <DIR>                : output directory"
-    Write-Output "`t-domainController <DC>          : ip/host of the DC to query"
+    Write-Output "`t-domainController <DC>          : ip or hostname of the DC to query"
     Write-Output "`t-domainDnsName <DNSNAME>        : dns name of the domain (ex: mydomain.local)"
     
     Write-Output "- Optional parameters:"
@@ -58,9 +58,9 @@ Function Usage([string]$errmsg = $null)
     Write-Output "`t-useBackupPriv                  : use backup privilege to access -sysvolPath"
     Write-Output "`t-ldapOnly                       : only dump data from the LDAP directory"
     Write-Output "`t-sysvolOnly                     : only dump data from the sysvol"
-    Write-Output "`t-forceOverwrite                 : overwrite any previous same-day, same-target dump files"
-    Write-Output "`t-resume                         : resume from the first non-successful command"
-  	Write-Output "`t-fromExistingDumps              : use previous directorycrawler dump files in target folder"
+    Write-Output "`t-fromExistingDumps              : use previous ldap files in the same day/target folder"
+    Write-Output "`t-resume                         : resume from the first non-successful command in the same day/target folder"
+    Write-Output "`t-forceOverwrite                 : overwrite any previous dump files from same day/target folder"
     Write-Output "`t-generateCmdOnly                : generate a list of commands to dump data, instead of executing them"
 
     Break

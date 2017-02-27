@@ -12,6 +12,8 @@ This repository contains tools that can be used to generate such graphs.
 
 ---
 ## CHANGES
+Better resume features in v1.2.3.
+
 New control paths are added in v1.2.2: RoDC and LAPS.
 
 Major code changes take place in v1.2, as it is now able to dump and analyze very large Active Directories without hogging too much RAM.
@@ -26,7 +28,7 @@ A few false positives were fixed and new control paths were added, so running it
 0. Import CSV files in graph database
 0. Query graph database
 0. Visualize graphs
-0. Known issues
+0. Other Querying Examples
 0. Authors
 
 ## 1. INSTALL / PREREQUISITES
@@ -49,9 +51,10 @@ A few false positives were fixed and new control paths were added, so running it
 0. Install a Java JRE from https://java.com/en/download/manual.jsp or from your distribution.
 
 
-0. Install Neo4j: download [neo4j community edition](https://neo4j.com/download/other-releases/) and extract the zip/tar archive (not the installer). **Do not start the Neo4j server before importing your data.**
+0. Install Neo4j: download the latest build of [neo4j community edition](https://neo4j.com/download/other-releases/) and extract the zip/tar archive (not the installer). **Do not start the Neo4j server before importing your data.**
 
-  - Fix line 68 in bin\Neo4j-Management\Merge-Neo4jJavaSettings.ps1 to: If (-not $Source -contains $thisSetting) {
+**Note:** Neo4j 3.2.0-alpha05 fixes an escape bug in CSV import that happens regularly with LDAP data.
+
   - Install as admin: .\bin\neo4j.bat install-service
 
 0. Install Ruby from https://rubyinstaller.org/downloads/ or from your distribution. A 64 bits version is recommended.
@@ -59,20 +62,11 @@ A few false positives were fixed and new control paths were added, so running it
 
 0. Install the `neography` gem. In an elevated prompt or with sudo:
 
-  gem install neography
+        gem install neography
   
-If installing on a machine with no Internet connection, grab the gems cache from your Ruby install folder in lib\ruby\gems\<version>\cache, then copy it over and run for all missing gems:
+If installing on a machine with no Internet connection, grab the gems cache from your Ruby install folder in lib\ruby\gems\<version>\cache, then copy it over and run:
   
-  gem install -f --local <Path_to>\<name>.gem
-
-### Tested software versions (anything more recent should be ok)
-
-- Windows 7+
-- Linux distributions: Ubuntu 14.04 and Debian 8
-- Java: 1.7 & 1.8
-- Neo4j: 3.0
-- Ruby: 2.2
-- Neography: 1.8.0
+        gem install -f --local <Path_to>\*.gem
 
 ## 2. USAGE CONTEXT
 
@@ -149,6 +143,8 @@ This produces some `.csv` and `.log` files as follow:
 - `-useBackupPriv`: use backup privilege to access `-sysvolPath`, which is needed when using a robocopy. You must use an administrator account to use this option.
 - `-generateCmdOnly`: generate the list of commands to use to dump the data, instead of executing these commands. This can be useful on systems where the powershell's execution-policy doesn't allow unsigned scripts to be executed, or on which powershell is not installed in a tested version (v2.0 and later).
 - `-fromExistingDumps`: skip the LDAP request step and work from files found in the Ldap\ folder.
+- `-resume`: look for the first non-successful command in the same-day, same-target folder and resume from there
+- `-forceOverwrite`: overwrite any previous dump files from the same-day, same-target folder
 
 ## 4. IMPORT CSV FILES INTO A GRAPH DATABASE
 
@@ -167,10 +163,10 @@ You may need admin permissions to start/stop Neo4j.
 
 - In neo4j folder:
 
->     .\bin\neo4j-import --into data\databases\adcp.db --id-type string  `
+>     .\bin\neo4j-admin import --into data\databases\adcp.db --id-type string  `
     --nodes $env:DUMP\Ldap\all_nodes.csv  `
     --relationships $((dir $env:DUMP\relations\*.csv -exclude *.deny.csv) -join ',') `
-    --input-encoding UTF-16LE --multiline-fields=true
+    --input-encoding UTF-16LE --multiline-fields=true --legacy-style-quoting=false
 
 
   Headers-related errors will be raised and can be ignored. It is still a good idea to have a look at the bad.log file.
@@ -193,11 +189,18 @@ You may need admin permissions to start/stop Neo4j.
 
 The `Query/query.rb` program allows you to query the created Neo4j database.
 	
-### Basic query to get a graph and paths of all nodes able to take control of the Domain Admins group:
+### Basic query to get a graph and paths of all nodes able to take control of the "Domain Admins" group:
 
     ruby query.rb --quick
-	
-   (though you should use --denyacefile <FILENAME> if you have a non-empty deny relations file).
+	  
+You should use --denyacefile if you have non-empty deny relations files:
+    ruby .\query.rb --quick --denyacefile $((dir $env:DUMP\relations\*.deny.csv) -join ',')
+   
+### To search for a node from its (partial) DN and get a graph to it (useful if AD is not in English):
+
+    ruby query.rb --search "cn=administrateurs,"
+    (This will return a node id number)
+    ruby query.rb --graph test.json <node id number>
 
 ### Automatic full audit mode (long)
 
@@ -333,6 +336,6 @@ queries. You can limit the maximum search depth with the `--maxdepth` option.
 
 ## 8. AUTHORS
 
-Geraud de Drouas - ANSSI - 2015-2016
+Geraud de Drouas - ANSSI - 2015-2017
 
 Lucas Bouillot, Emmanuel Gras - ANSSI - 2014
