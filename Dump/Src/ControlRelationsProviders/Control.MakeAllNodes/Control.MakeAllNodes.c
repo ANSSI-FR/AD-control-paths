@@ -24,6 +24,7 @@ static void CallbackBuildDnCache(
 	CACHE_OBJECT_BY_DN cacheEntry = { 0 };
 	PCACHE_OBJECT_BY_DN inserted = NULL;
 	BOOL newElement = FALSE;
+	LPTSTR objectClass = NULL;
 
 	UNREFERENCED_PARAMETER(hDenyOutfile);
 
@@ -54,7 +55,8 @@ static void CallbackBuildDnCache(
 		free(cacheEntry.objectClass);
 	}
 	else {
-		bResult = ControlWriteOutline(hOutfile, tokens[LdpListDn], tokens[LdpListObjectClass], CONTROL_ALLNODES_KEYWORD);
+		objectClass = _tcsrchr(tokens[LdpListObjectClass], _T(';')) + 1;
+		bResult = ControlWriteOutline(hOutfile, tokens[LdpListDn], objectClass, CONTROL_ALLNODES_KEYWORD);
 		if (!bResult)
 			LOG(Err, _T("Cannot write outline for <%s>"), tokens[LdpListDn]);
 	}
@@ -80,7 +82,7 @@ static void CallbackMakeAllNodes(
 		cacheEntry.dn = _tcsdup(tokens[i]);
 		if (!cacheEntry.dn)
 			FATAL(_T("Could not dup dn <%s>"), tokens[i]);
-		cacheEntry.objectClass = _tcsdup(_T("foreignobject;unknown"));
+		cacheEntry.objectClass = _tcsdup(_T("unknown"));
 		if (!cacheEntry.objectClass)
 			FATAL(_T("Could not dup objectclass for dn <%s>"), tokens[i]);
 

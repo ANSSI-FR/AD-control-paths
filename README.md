@@ -163,13 +163,13 @@ You may need admin permissions to start/stop Neo4j.
 
 - In neo4j folder:
 
->     .\bin\neo4j-admin import --into data\databases\adcp.db --id-type string  `
+>     .\bin\neo4j-admin import --database adcp.db --id-type string  `
     --nodes $env:DUMP\Ldap\all_nodes.csv  `
     --relationships $((dir $env:DUMP\relations\*.csv -exclude *.deny.csv) -join ',') `
     --input-encoding UTF-16LE --multiline-fields=true --legacy-style-quoting=false
 
 
-  Headers-related errors will be raised and can be ignored. It is still a good idea to have a look at the bad.log file.
+  Headers-related errors will be raised and can be ignored. It is still a good idea to have a look at the import.report file.
 		
 0. Modify Neo4j default configuration file: conf/neo4j.conf
 		
@@ -194,7 +194,8 @@ The `Query/query.rb` program allows you to query the created Neo4j database.
     ruby query.rb --quick
 	  
 You should use --denyacefile if you have non-empty deny relations files:
-    ruby .\query.rb --quick --denyacefile $((dir $env:DUMP\relations\*.deny.csv) -join ',')
+
+    ruby query.rb --quick --denyacefile $((dir $env:DUMP\relations\*.deny.csv) -join ',')
    
 ### To search for a node from its (partial) DN and get a graph to it (useful if AD is not in English):
 
