@@ -339,7 +339,7 @@ if([bool]$user -bAnd [bool]$password -bAnd ![bool]$ldapOnly) {
     Write-Output-And-Global-Log "[+] Mapping SYSVOL $($sysvolPath)"
     $secstr = convertto-securestring -String $password -AsPlainText -Force
     $cred = new-object -typename System.Management.Automation.PSCredential -argumentlist $user, $secstr
-    for($j=67;gdr($driveName=[char]$j++)2>0){}
+    for($j=67;gdr($driveName=[char]$j++) -erroraction 'silentlycontinue'){}
     New-PSDrive -PSProvider FileSystem -Root $sysvolPath -Name $driveName -Credential $cred -Scope Global -Persist
     $sysvolPath = $driveName + ':'
     if (Test-Path $sysvolPath) {
