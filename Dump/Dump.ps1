@@ -398,7 +398,7 @@ if([bool]$user -bAnd [bool]$password -bAnd ![bool]$ldapOnly) {
 Execute-Cmd-Wrapper -cmd @"
 .\Bin\Control.MakeAllNodes.exe
     -D '$logLevel'
-    -L '$outputDir\Logs\$filesPrefix.convert.ad.lowercase.log'
+    -L '$outputDir\Logs\$filesPrefix.makeallnodes.log'
     -I '$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
 	  -A '$((dir $outputDir\Relations\*.csv -exclude *.deny.csv) -join ',')'
     -O '$outputDir\Ldap\all_nodes.csv'
