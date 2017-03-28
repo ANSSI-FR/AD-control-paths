@@ -12,7 +12,7 @@ This repository contains tools that can be used to generate such graphs.
 
 ---
 ## CHANGES
-Better resume features in v1.2.3.
+Better resume features, nodes clustering (through OVALI) in v1.2.3.
 
 New control paths are added in v1.2.2: RoDC and LAPS.
 
@@ -50,15 +50,13 @@ A few false positives were fixed and new control paths were added, so running it
 
 0. Install a Java JRE from https://java.com/en/download/manual.jsp or from your distribution.
 
-
 0. Install Neo4j: download the latest build of [neo4j community edition](https://neo4j.com/download/other-releases/) and extract the zip/tar archive (not the installer). **Do not start the Neo4j server before importing your data.**
 
 **Note:** Neo4j 3.2.0-alpha05 fixes an escape bug in CSV import that happens regularly with LDAP data.
 
-  - Install as admin: .\bin\neo4j.bat install-service
+0. Install Neo4j service as admin: .\bin\neo4j.bat install-service
 
 0. Install Ruby from https://rubyinstaller.org/downloads/ or from your distribution. A 64 bits version is recommended.
-
 
 0. Install the `neography` gem. In an elevated prompt or with sudo:
 
@@ -105,7 +103,7 @@ If no access to the domain is given, control graphs can be realized from offline
 
 ## 3. DUMP DATA INTO CSV FILES
 
-**Warning** Accessing the Sysvol share from a non-domain machine can be blocked by UNC Paths hardening, which is a client-side parameter enabled by default since Windows 10. Disable it like this:
+**Warning:** Accessing the Sysvol share from a non-domain machine can be blocked by UNC Paths hardening, which is a client-side parameter enabled by default since Windows 10. Disable it like this:
 Set-ItemProperty -Path HKLM:\Software\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths -Name "\\*\SYSVOL" -Value "RequireMutualAuthentication=0"
 
 **Note:** The Dump.ps1 script configures the outputDir to be a NTFS compressed folder. Flat unicode CSVs files can take quite a lot of disk space otherwise.
@@ -114,9 +112,9 @@ Use the powershell script `Dump\Dump.ps1` to dump data from the LDAP directory a
 The simplest example is:
 
     .\Dump.ps1
-        -outputDir        <output directory>
-        -domainController <DC ip or host>
-		    -domainDnsName    <domain FQDN>
+      -outputDir <output directory>
+      -domainController <DC ip or host>
+		  -domainDnsName <domain FQDN>
 
 - `-domainController` can be an real domain controller, or a machine exposing the LDAP directory from a re-mounted `ntds.dit` using `dsamain`.
 - `-sysvolPath` can be a network path (example `\\192.168.25.123\sysvol\domain.local\Policies`) or a path to a local robocopy of this folder.
@@ -154,16 +152,17 @@ You may need admin permissions to start/stop Neo4j.
 
 0. Stop the Neo4j server if it is started:
 
-        $env:NEO4J\bin\neo4j stop
+    $env:NEO4J\bin\neo4j stop
 
 0. Import CSV files in a new graph database adcp.db:
 
-- Set an environment variable for convenience:
-  $env:DUMP = "PATH_TO\yyyymmdd_domainfqdn\" 
+- Set an environment variable to the dump folder for convenience:
+
+    $env:DUMP = "PATH_TO\yyyymmdd_domainfqdn\" 
 
 - In neo4j folder:
 
->     .\bin\neo4j-admin import --database adcp.db --id-type string  `
+    .\bin\neo4j-admin import --database adcp.db --id-type string  `
     --nodes $env:DUMP\Ldap\all_nodes.csv  `
     --relationships $((dir $env:DUMP\relations\*.csv -exclude *.deny.csv) -join ',') `
     --input-encoding UTF-16LE --multiline-fields=true --legacy-style-quoting=false
@@ -171,9 +170,10 @@ You may need admin permissions to start/stop Neo4j.
 
   Headers-related errors will be raised and can be ignored. It is still a good idea to have a look at the import.report file.
 		
-0. Modify Neo4j default configuration file: conf/neo4j.conf
+0. Modify Neo4j default configuration file: conf/neo4j.conf. Set the following:
 		
-		uncomment and set dbms.active_database=adcp.db
+- dbms.active_database=adcp.db
+- cypher.forbid_shortestpath_common_nodes=false
 		
 0. Start the Neo4j server:
 
@@ -197,10 +197,12 @@ You should use --denyacefile if you have non-empty deny relations files:
 
     ruby query.rb --quick --denyacefile $((dir $env:DUMP\relations\*.deny.csv) -join ',')
    
-### To search for a node from its (partial) DN and get a graph to it (useful if AD is not in English):
+### To search for a node from its DN and get a graph to it (useful if AD is not in English):
 
     ruby query.rb --search "cn=administrateurs,"
-    (This will return a node id number)
+    
+  (This will return a node id number)
+  
     ruby query.rb --graph test.json <node id number>
 
 ### Automatic full audit mode (long)
