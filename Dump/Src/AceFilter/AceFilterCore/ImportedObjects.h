@@ -136,6 +136,7 @@ typedef struct _IMPORTED_OBJECT {
         BYTE sid[SECURITY_MAX_SID_SIZE];
         BYTE adminCount;
 		LPTSTR *objectClassesNames;
+		LPTSTR mail;
     } imported;
 
     struct {
@@ -168,6 +169,7 @@ typedef struct _IMPORTED_ACE {
     struct {
         PIMPORTED_OBJECT object;
         PIMPORTED_OBJECT trustee;
+		LPTSTR mail;
     } resolved;
 
     struct {
@@ -241,6 +243,10 @@ PIMPORTED_OBJECT  ResolverGetAceTrustee(
 PIMPORTED_OBJECT ResolverGetAceObject(
     _In_ PIMPORTED_ACE ace
     );
+
+LPTSTR ResolverGetAceObjectMail(
+	_In_ PIMPORTED_ACE ace
+);
 
 PSECURITY_DESCRIPTOR ResolverGetSchemaDefaultSD(
     _In_ PIMPORTED_SCHEMA sch

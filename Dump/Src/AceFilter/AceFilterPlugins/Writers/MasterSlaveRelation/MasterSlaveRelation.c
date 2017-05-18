@@ -127,11 +127,13 @@ BOOL PLUGIN_WRITER_WRITEACE(
     DWORD i = 0;
     DWORD relCount = 0;
     LPTSTR resolvedTrustee = NULL;
+	LPTSTR resolvedMail = NULL;
 
     resolvedTrustee = api->Resolver.ResolverGetAceTrusteeStr(ace);
+	resolvedMail = api->Resolver.ResolverGetAceObjectMail(ace);
 
     for (i = 0; i < ACE_REL_COUNT; i++) {
-        if (HAS_RELATION(ace, i)) {
+        if (HAS_RELATION(ace, i) && i != EXT_RIGHT_SEND_AS && i != EXT_RIGHT_RECEIVE_AS) {
             relCount++;
 			if (IS_ALLOWED_ACE(ace->imported.raw))
 				WriteRelation(api, resolvedTrustee, ace->imported.objectDn, api->Ace.GetAceRelationStr(i),gs_hOutfile);
@@ -139,5 +141,22 @@ BOOL PLUGIN_WRITER_WRITEACE(
 				WriteRelation(api, resolvedTrustee, ace->imported.objectDn, api->Ace.GetAceRelationStr(i), gs_hOutDenyfile);
         }
     }
+
+	if (HAS_RELATION(ace, EXT_RIGHT_SEND_AS) && resolvedMail) {		
+		relCount++;
+		if (IS_ALLOWED_ACE(ace->imported.raw))
+			WriteRelation(api, resolvedTrustee, resolvedMail, api->Ace.GetAceRelationStr(EXT_RIGHT_SEND_AS), gs_hOutfile);
+		else
+			WriteRelation(api, resolvedTrustee, resolvedMail, api->Ace.GetAceRelationStr(EXT_RIGHT_SEND_AS), gs_hOutDenyfile);
+	}
+
+	if (HAS_RELATION(ace, EXT_RIGHT_RECEIVE_AS) && resolvedMail) {
+		relCount++;
+		if (IS_ALLOWED_ACE(ace->imported.raw))
+			WriteRelation(api, resolvedTrustee, resolvedMail, api->Ace.GetAceRelationStr(EXT_RIGHT_RECEIVE_AS), gs_hOutfile);
+		else
+			WriteRelation(api, resolvedTrustee, resolvedMail, api->Ace.GetAceRelationStr(EXT_RIGHT_RECEIVE_AS), gs_hOutDenyfile);
+	}
+
     return TRUE;
 }

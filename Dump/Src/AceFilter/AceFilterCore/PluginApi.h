@@ -209,6 +209,10 @@ typedef struct _PLUGIN_API_TABLE {
             _In_ PIMPORTED_ACE ace
             );
 
+		LPTSTR(*ResolverGetAceObjectMail)(
+			_In_ PIMPORTED_ACE ace
+			);
+
         PSECURITY_DESCRIPTOR (*ResolverGetSchemaDefaultSD)(
             _In_ PIMPORTED_SCHEMA sch
             );

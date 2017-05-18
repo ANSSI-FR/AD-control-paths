@@ -91,6 +91,7 @@ static void _Function_class_(const PFN_CACHE_ENTRY_DESTROY_CALLBACK) pfnObjEntry
 	if (IMPORTED_REFCOUNT(impObj) == 0) {
 		UtilsHeapFreeHelper(gs_hHeapCache, impObj->imported.dn);
 		UtilsHeapFreeHelper(gs_hHeapCache, impObj->imported.objectClassesNames);
+		UtilsHeapFreeHelper(gs_hHeapCache, impObj->imported.mail);
 		UtilsHeapFreeHelper(gs_hHeapCache, impObj);
 	}
 }
@@ -190,6 +191,8 @@ void CacheInsertObject(
 	IMPORTED_FIELD_CST_CPY(object, obj, imported.adminCount);
     IMPORTED_FIELD_BUF_CPY(object, obj, imported.sid, obj->computed.sidLength);
     IMPORTED_FIELD_DUP_CPY(object, obj, imported.dn);
+	if(obj->imported.mail)
+		IMPORTED_FIELD_DUP_CPY(object, obj, imported.mail);
 	IMPORTED_FIELD_ARR_CPY(object, obj, imported.objectClassesNames, obj->computed.objectClassCount);
 
     //

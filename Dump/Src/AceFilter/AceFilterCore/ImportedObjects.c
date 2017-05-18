@@ -355,6 +355,22 @@ PIMPORTED_OBJECT ResolverGetAceObject(
     return NULL_IF_BAD(ace->resolved.object);
 }
 
+LPTSTR ResolverGetAceObjectMail(
+	_In_ PIMPORTED_ACE ace
+) {
+	if (!ace->resolved.mail) {
+		PIMPORTED_OBJECT obj = ResolverGetAceObject(ace);
+		if (obj) {
+			ace->resolved.mail = obj->imported.mail;
+		}
+		else {
+			LOG(Dbg, _T("Cannot resolve object <%s> for ace <%u>"), ace->imported.objectDn, ace->computed.number);
+		}
+	}
+	
+	return NULL_IF_BAD(ace->resolved.mail);
+}
+
 PSECURITY_DESCRIPTOR ResolverGetSchemaObject(
     _In_ PIMPORTED_SCHEMA sch
     ) {

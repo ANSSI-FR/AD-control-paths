@@ -51,6 +51,12 @@ static GUID gcs_GuidExtendedRightAdmPwd = { 0 }; // Runtime resolution required 
 static LPTSTR gcs_AdmPwdAppliesTo[1] = { _T("computer") };
 static BOOL isAdmPwdGuidResolved = FALSE;
 
+static GUID gcs_GuidExtendedRightSendAs = { 0xab721a54, 0x1e2f, 0x11d0,{ 0x98, 0x19, 0x00, 0xaa, 0x00, 0x40, 0x52, 0x9b } }; // _T("ab721a54-1e2f-11d0-9819-00aa0040529b");
+static LPTSTR gcs_SendAsAppliesTo[4] = { _T("user"), _T("computer"), _T("msds-managedserviceaccount"), _T("inetorgperson") };
+
+static GUID gcs_GuidExtendedRightReceiveAs = { 0xab721a56, 0x1e2f, 0x11d0,{ 0x98, 0x19, 0x00, 0xaa, 0x00, 0x40, 0x52, 0x9b } }; // _T("ab721a56-1e2f-11d0-9819-00aa0040529b");
+static LPTSTR gcs_ReceiveAsAppliesTo[4] = { _T("user"), _T("computer"), _T("msds-managedserviceaccount"), _T("inetorgperson") };
+
 static GUID gcs_GuidPropertyMember = { 0xbf9679c0, 0x0de6, 0x11d0, { 0xa2, 0x85, 0x00, 0xaa, 0x00, 0x30, 0x49, 0xe2 } }; // _T("bf9679c0-0de6-11d0-a285-00aa003049e2");
 static LPTSTR gcs_MemberAppliesTo[1] = { _T("group") };
 
@@ -80,6 +86,8 @@ static CONTROL_GUID gcs_GuidsControlExtendedRights[] = {
 	{ &gcs_GuidExtendedRightUserForceChangePassword, EXT_RIGHT_FORCE_CHANGE_PWD, gcs_UserForceChangePasswordAppliesTo, ARRAY_COUNT(gcs_UserForceChangePasswordAppliesTo) },
 	{ &gcs_GuidExtendedRightDSReplicationGetChangesAll, EXT_RIGHT_REPLICATION_GET_CHANGES_ALL, gcs_DSReplicationGetChangesAllAppliesTo, ARRAY_COUNT(gcs_DSReplicationGetChangesAllAppliesTo) },
 	{ &gcs_GuidExtendedRightAdmPwd, EXT_RIGHT_ADM_PWD, gcs_AdmPwdAppliesTo, ARRAY_COUNT(gcs_AdmPwdAppliesTo) },
+	{ &gcs_GuidExtendedRightSendAs, EXT_RIGHT_SEND_AS, gcs_SendAsAppliesTo, ARRAY_COUNT(gcs_SendAsAppliesTo) },
+	{ &gcs_GuidExtendedRightReceiveAs, EXT_RIGHT_RECEIVE_AS, gcs_ReceiveAsAppliesTo, ARRAY_COUNT(gcs_ReceiveAsAppliesTo) },
 };
 
 // Control validated writes
@@ -159,6 +167,8 @@ BOOL PLUGIN_FILTER_FILTERACE(
 		- Reset password => user class
 		- DS Replication Get Changes All => AD partitions (Domain-DNS, Configuration, DMD)
 		- AdmPwd: this allows reading the LAPS password => computer class
+		- SendAs: control on mailbox, to be written as smtp address
+		- ReceiveAs: control on mailbox, to be written as smtp address
 
 	- Validated writes (ADS_RIGHT_DS_SELF) :
 		- all (empty guid)

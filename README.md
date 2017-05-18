@@ -62,7 +62,7 @@ A few false positives were fixed and new control paths were added, so running it
 
         gem install neography
   
-If installing on a machine with no Internet connection, grab the gems cache from your Ruby install folder in lib\ruby\gems\<version>\cache, then copy it over and run:
+0. If installing on a machine with no Internet connection, grab the gems cache from your Ruby install folder in lib\ruby\gems\<version>\cache, then copy it over and run:
   
         gem install -f --local <Path_to>\*.gem
 
@@ -112,9 +112,9 @@ Use the powershell script `Dump\Dump.ps1` to dump data from the LDAP directory a
 The simplest example is:
 
     .\Dump.ps1
-      -outputDir <output directory>
+      -outputDir        <output directory>
       -domainController <DC ip or host>
-		  -domainDnsName <domain FQDN>
+      -domainDnsName    <domain FQDN>
 
 - `-domainController` can be an real domain controller, or a machine exposing the LDAP directory from a re-mounted `ntds.dit` using `dsamain`.
 - `-sysvolPath` can be a network path (example `\\192.168.25.123\sysvol\domain.local\Policies`) or a path to a local robocopy of this folder.
@@ -151,22 +151,22 @@ You may need admin permissions to start/stop Neo4j.
 
 
 0. Stop the Neo4j server if it is started:
-
+```
     $env:NEO4J\bin\neo4j stop
-
+```
 0. Import CSV files in a new graph database adcp.db:
 
 - Set an environment variable to the dump folder for convenience:
-
+```
     $env:DUMP = "PATH_TO\yyyymmdd_domainfqdn\" 
-
+```
 - In neo4j folder:
-
+```
     .\bin\neo4j-admin import --database adcp.db --id-type string  `
     --nodes $env:DUMP\Ldap\all_nodes.csv  `
     --relationships $((dir $env:DUMP\relations\*.csv -exclude *.deny.csv) -join ',') `
     --input-encoding UTF-16LE --multiline-fields=true --legacy-style-quoting=false
-
+```
 
   Headers-related errors will be raised and can be ignored. It is still a good idea to have a look at the import.report file.
 		

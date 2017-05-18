@@ -30,7 +30,7 @@ PLUGIN_DECLARE_FREESCHEMA;
 
 /* --- DEFINES -------------------------------------------------------------- */
 #define LDPDUMP_ACE_TOKEN_COUNT         (2)
-#define LDPDUMP_OBJ_TOKEN_COUNT        (12)
+#define LDPDUMP_OBJ_TOKEN_COUNT        (15)
 #define LDPDUMP_SCH_TOKEN_COUNT      (5)
 #define LDPDUMP_HEADER_FIRST_TOKEN      _T("dn")
 
@@ -62,6 +62,9 @@ typedef enum _OBJ_TSV_TOKENS {
 	LdpListManagedBy,
 	LdpListRevealOnDemand,
 	LdpListNeverReveal,
+	LdpListMail,
+	LdpListHomeMDB,
+	LdpListMSExchRoleEntries,
 } OBJ_TSV_TOKENS;
 
 
@@ -342,6 +345,10 @@ BOOL PLUGIN_IMPORTER_GETNEXTOBJ(
 	obj->imported.dn = ApiStrDupX(gs_hHeapLdapDump, tokens[LdpListDn]);
 	obj->imported.adminCount = STR_EMPTY(tokens[LdpListAdminCount]) ? 0 : 1;
 
+	if (!STR_EMPTY(tokens[LdpListMail])) {
+		obj->imported.mail = ApiStrDupX(gs_hHeapLdapDump, tokens[LdpListMail]);
+	}
+
 	if (!STR_EMPTY(tokens[LdpListObjectClass]))
 	{
 		//Replace this with StrNextToken
@@ -434,6 +441,9 @@ void PLUGIN_IMPORTER_FREEOBJECT(
 	_Inout_ PIMPORTED_OBJECT object
 ) {
 	ApiHeapFreeX(gs_hHeapLdapDump, object->imported.dn);
+	if (object->imported.mail) {
+		ApiHeapFreeX(gs_hHeapLdapDump, object->imported.mail);
+	}
 	if (object->computed.objectClassCount) {
 		ApiHeapFreeX(gs_hHeapLdapDump, object->imported.objectClassesNames[0]);
 	}

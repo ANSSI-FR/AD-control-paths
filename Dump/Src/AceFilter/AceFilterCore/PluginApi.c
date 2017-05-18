@@ -60,6 +60,7 @@ PLUGIN_API_TABLE const gc_PluginApiTable = {
         .ResolverGetAceTrusteeStr = ResolverGetAceTrusteeStr,
         .ResolverGetAceTrustee = ResolverGetAceTrustee,
         .ResolverGetAceObject = ResolverGetAceObject,
+		.ResolverGetAceObjectMail = ResolverGetAceObjectMail,
         .ResolverGetSchemaDefaultSD = ResolverGetSchemaDefaultSD,
         .ResolverGetSchemaObject = ResolverGetSchemaObject,
         .GetObjectByDn = GetObjectByDn,
