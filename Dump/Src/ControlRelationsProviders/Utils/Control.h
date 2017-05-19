@@ -54,7 +54,12 @@ typedef enum _OBJ_CSV_TOKENS {
 	LdpListCN = 8,
 	LdpListManagedBy,
 	LdpListRevealOnDemand,
-	LdpListNeverReveal
+	LdpListNeverReveal,
+	LdpListMail,
+	LdpListHomeMDB,
+	LdpListMsExchRoleEntries,
+	LdpListMsExchUserLink,
+	LdpListMsExchRoleLink
 } OBJ_CSV_TOKENS;
 
 typedef enum _ACE_CSV_TOKENS {
