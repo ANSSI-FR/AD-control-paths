@@ -142,6 +142,7 @@ BOOL PLUGIN_WRITER_WRITEACE(
         }
     }
 
+	//Exceptions for rights that in fact apply to the mailbox of the user
 	if (HAS_RELATION(ace, EXT_RIGHT_SEND_AS) && resolvedMail) {		
 		relCount++;
 		if (IS_ALLOWED_ACE(ace->imported.raw))

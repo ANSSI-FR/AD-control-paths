@@ -82,5 +82,5 @@ BOOL PLUGIN_FILTER_FILTERACE(
         }
     }
 
-    return FALSE;
+    return TRUE;
 }

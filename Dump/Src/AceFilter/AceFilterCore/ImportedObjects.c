@@ -315,7 +315,12 @@ LPTSTR  ResolverGetAceTrusteeStr(
 		// Either resolved or computed...
         PIMPORTED_OBJECT obj = ResolverGetAceTrustee(ace);
         if (obj) {
-            ace->computed.trusteeStr = obj->imported.dn;
+			if (_tcsstr(obj->imported.dn, _T("cn=self,cn=wellknown security principals,cn=configuration"))) {
+				ace->computed.trusteeStr = ace->imported.objectDn;
+			}
+			else {
+				ace->computed.trusteeStr = obj->imported.dn;
+			}
         }
         else {
 			// this will leak, should be infrequent though

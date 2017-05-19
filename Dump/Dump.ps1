@@ -30,6 +30,7 @@ $globalTimer = $null
 $globalLogFile = $null
 $dumpLdap = $ldapOnly.IsPresent -or (!$ldapOnly.IsPresent -and !$sysvolOnly.IsPresent)
 $dumpSysvol = $sysvolOnly.IsPresent -or (!$ldapOnly.IsPresent -and !$sysvolOnly.IsPresent)
+$dumpExchange = $true
 $date =  date -Format yyyyMMdd
 
 #
@@ -323,6 +324,66 @@ Execute-Cmd-Wrapper -cmd @"
     ldpobj='$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
     ldpsch='$outputDir\Ldap\$($filesPrefix)_LDAP_sch.csv'
     ldpace='$outputDir\Ldap\$($filesPrefix)_LDAP_ace.csv'
+"@
+
+}
+
+#
+# EXCHANGE data
+#
+if($dumpExchange) {
+Execute-Cmd-Wrapper -cmd @"
+.\Bin\Control.Exch.Db.exe
+    -D '$logLevel'
+    -L '$outputDir\Logs\$filesPrefix.control.exch.db.log'
+	  -I '$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
+    -O '$outputDir\Relations\$filesPrefix.control.exch.db.csv'
+"@
+
+Execute-Cmd-Wrapper -cmd @"
+.\Bin\Control.Exch.Role.exe
+    -D '$logLevel'
+    -L '$outputDir\Logs\$filesPrefix.control.exch.role.log'
+	  -I '$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
+    -O '$outputDir\Relations\$filesPrefix.control.exch.role.csv'
+"@
+
+Execute-Cmd-Wrapper -cmd @"
+.\Bin\Control.Exch.RoleEntry.exe
+    -D '$logLevel'
+    -L '$outputDir\Logs\$filesPrefix.control.exch.roleentry.log'
+	  -I '$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
+    -O '$outputDir\Relations\$filesPrefix.control.exch.roleentry.csv'
+"@
+
+# Filter DB SD
+Execute-Cmd-Wrapper -cmd @"
+.\Bin\AceFilter.exe
+    --loglvl='$logLevel'
+    --logfile='$outputDir\Logs\$filesPrefix.acefilter.exch.db.log'
+    --importer='LdapDump'
+    --writer='MasterSlaveRelation'
+    --filters='InheritedObjectType,ControlMbx'
+    --
+    msrout='$outputDir\Relations\$filesPrefix.acefilter.exch.db.csv'
+    ldpobj='$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
+    ldpsch='$outputDir\Ldap\$($filesPrefix)_LDAP_sch.csv'
+    ldpace='$outputDir\Ldap\$($filesPrefix)_LDAP_exchdb.csv'
+"@
+
+# Filter MBX SD
+Execute-Cmd-Wrapper -cmd @"
+.\Bin\AceFilter.exe
+    --loglvl='$logLevel'
+    --logfile='$outputDir\Logs\$filesPrefix.acefilter.mbx.sd.log'
+    --importer='LdapDump'
+    --writer='MasterMailboxRelation'
+    --filters='Inherited,ControlMbx'
+    --
+    mmrout='$outputDir\Relations\$filesPrefix.acefilter.mbx.sd.csv'
+    ldpobj='$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
+    ldpsch='$outputDir\Ldap\$($filesPrefix)_LDAP_sch.csv'
+    ldpace='$outputDir\Ldap\$($filesPrefix)_LDAP_mbxsd.csv'
 "@
 
 }

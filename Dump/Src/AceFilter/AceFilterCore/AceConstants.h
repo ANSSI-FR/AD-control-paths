@@ -13,7 +13,7 @@
 #pragma warning(default:4201)
 
 /* --- DEFINES -------------------------------------------------------------- */
-#define ACE_REL_COUNT                           (25)
+#define ACE_REL_COUNT                           (30)
 #define SET_RELATION(ace, rel)                  BITMAP_SET_BIT((ace)->computed.relation, rel)
 #define HAS_RELATION(ace, rel)                  BITMAP_GET_BIT((ace)->computed.relation, rel)
 
@@ -38,6 +38,7 @@
 typedef enum _ACE_RELATION {
     GEN_RIGHT_ALL = __COUNTER__,
     GEN_RIGHT_WRITE = __COUNTER__,
+	GEN_RIGHT_READ = __COUNTER__,
 
     STAND_RIGHT_WRITE_DAC = __COUNTER__,
     STAND_RIGHT_WRITE_OWNER = __COUNTER__,
@@ -66,6 +67,11 @@ typedef enum _ACE_RELATION {
 
     FS_RIGHT_WRITEDATA_ADDFILE = __COUNTER__,
     FS_RIGHT_APPENDDATA_ADDSUBDIR = __COUNTER__,
+
+	EXCH_CHANGEPERMISSION = __COUNTER__,
+	EXCH_CHANGEOWNER = __COUNTER__,
+	EXCH_FULLACCESS = __COUNTER__,
+	EXCH_EXTERNALACCOUNT = __COUNTER__,
 } ACE_RELATION;
 
 static_assert(__COUNTER__ == ACE_REL_COUNT, "inconsistent value for ACE_REL_COUNT");
