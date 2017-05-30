@@ -252,7 +252,7 @@ PSECURITY_DESCRIPTOR ResolverGetSchemaDefaultSD(
     _In_ PIMPORTED_SCHEMA sch
     );
 
-PSECURITY_DESCRIPTOR ResolverGetSchemaObject(
+PIMPORTED_OBJECT ResolverGetSchemaObject(
     _In_ PIMPORTED_SCHEMA sch
     );
 

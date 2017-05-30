@@ -375,14 +375,6 @@ Execute-Cmd-Wrapper -cmd @"
     -O '$outputDir\Relations\$filesPrefix.control.exch.roleentry.csv'
 "@
 
-# RBAC Static RoleEntries to Exchange Trusted Subsystem
-$exchangeTrustedSubsystemDN = 'cn=exchange trusted subsystem,ou=microsoft exchange security groups,dc=' + $domainDnsName.ToLower().Replace('.',',dc=')
-$staticRoleEntries = Get-Content '.\Utils\Exch.RBAC.Static.RoleEntry.csv' -Encoding Unicode
-'dnMaster:START_ID,dnSlave:END_ID,keyword:TYPE' | Out-File -FilePath $outputDir'\Relations\'$filesPrefix'.static.exch.roleentry.csv' -Encoding Unicode
-foreach ($roleEntry in $staticRoleEntries) {
-    $roleEntry + ',"' + $exchangeTrustedSubsystemDN + '",RBAC_STATIC_ROLEENTRY' | Out-File -FilePath $outputDir'\Relations\'$filesPrefix'.static.exch.roleentry.csv' -Encoding Unicode -Append
-}
-
 # OWNER MBX SD
 Execute-Cmd-Wrapper -cmd @"
 .\Bin\Control.Ad.Sd.exe
@@ -426,9 +418,9 @@ Execute-Cmd-Wrapper -cmd @"
 # Inbox Folder MAPI SD
 Execute-Cmd-Wrapper -cmd @"
 .\Utils\Get-MAPIFoldersPermissions.ps1
-    -infile '$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
-    -server $ExchangeServer
+    -infile '$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'   
     -outfile '$outputDir\Ldap\$($filesPrefix)_EWS_foldersd.csv'
+    -server $ExchangeServer
     -username $ExchangeUsername
     -password $ExchangePassword
 "@

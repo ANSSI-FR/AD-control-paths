@@ -243,7 +243,7 @@ BOOL isObjectTypeClass(
 		return FALSE;
 	}
 	objectSchemaObjectType = ResolverGetSchemaObject(schemaObjectType);
-	if (!objectSchemaObjectType || objectSchemaObjectType->computed.objectClassCount != 2 || _tcscmp(objectSchemaObjectType->imported.objectClassesNames[1], _T("classSchema"))) {
+	if (!objectSchemaObjectType || objectSchemaObjectType->computed.objectClassCount != 2 || _tcscmp(objectSchemaObjectType->imported.objectClassesNames[1], _T("classschema"))) {
 		LOG(Dbg, _T("ObjectType GUID does not represent a class. object <%s> for ACE <%u>."), ace->imported.objectDn, ace->computed.number);
 		return FALSE;
 	}
@@ -376,7 +376,7 @@ LPTSTR ResolverGetAceObjectMail(
 	return NULL_IF_BAD(ace->resolved.mail);
 }
 
-PSECURITY_DESCRIPTOR ResolverGetSchemaObject(
+PIMPORTED_OBJECT ResolverGetSchemaObject(
     _In_ PIMPORTED_SCHEMA sch
     ) {
     if (!sch->resolved.object) {

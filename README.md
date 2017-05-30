@@ -195,7 +195,7 @@ The `Query/query.rb` program allows you to query the created Neo4j database.
 	  
 You should use --denyacefile if you have non-empty deny relations files:
 
-    ruby query.rb --quick --denyacefile $((dir $env:DUMP\relations\*.deny.csv) -join ',')
+    ruby query.rb --quick --denyacefile $((dir $env:DUMP\Relations\*.deny.csv) -join ',')
    
 ### To search for a node from its DN and get a graph to it (useful if AD is not in English):
 
