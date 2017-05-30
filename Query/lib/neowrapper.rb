@@ -129,7 +129,19 @@ class NeoWrapper
     h = { "nodes" => [], "links" => [] }
     nodes_idx = []
 
-    nodes.each do |n|
+
+
+    nodes_withrel = []
+    rels_type = {}
+    rels.each do |r|
+      s, e = relstart(r), relend(r)
+      nodes_withrel |= [s]
+      nodes_withrel |= [e]
+      rels_type[ [s, e] ] ||= []
+      rels_type[ [s, e] ] << reltype(r)
+    end
+    
+    nodes_withrel.each do |n|
       h["nodes"] << {
         "id" => n,
         "name" => nodename(n),
@@ -139,14 +151,7 @@ class NeoWrapper
       }
       nodes_idx << n
     end
-
-    rels_type = {}
-    rels.each do |r|
-      s, e = relstart(r), relend(r)
-      rels_type[ [s, e] ] ||= []
-      rels_type[ [s, e] ] << reltype(r)
-    end
-
+    
     rels_type.each do |k, v|
       s = nodes_idx.index(k[0])
       e = nodes_idx.index(k[1])
@@ -159,6 +164,8 @@ class NeoWrapper
       }
     end
 
+    
+    
     info "control graph with #{h["nodes"].size} nodes and #{h["links"].size} links"
     return JSON.pretty_generate(h)
   end
@@ -238,7 +245,11 @@ class NeoWrapper
 
   def nodetype(n)
     @nodecache[n] ||= {}
-    @nodecache[n]["type"] ||= @neo.get_node_labels(n).last # should have only one label
+    if nodename(n).count('@') == 1 and nodename(n).count('=') == 0
+      @nodecache[n]["type"] ||= 'email'
+    else
+      @nodecache[n]["type"] ||= @neo.get_node_labels(n).last # should have only one label
+    end
   end
 
   def reltype(r)
@@ -266,19 +277,25 @@ class NeoWrapper
     control ||= control_nodes(node, direction, nil)
 	  @prev_qp_control = control
 	
-    query = ""
+    query = ""    
     case direction
     when :from
       # no need to check for maxlength, as control_nodes (above) only returns
       # nodes within reach
-      query << "MATCH path = allShortestPaths( (n)-[*]->(control) ) "
+      query << "MATCH path = allShortestPaths( (n)-[r*]->(control) ) "
     when :to
-      query << "MATCH path = allShortestPaths( (n)<-[*]-(control) ) "
+      query << "MATCH path = allShortestPaths( (n)<-[r*]-(control) ) "
     else
       raise "unknown direction: #{direction}"
-    end
+    end  
     query << "WHERE id(n) = { n } "
     query << "AND id(control) IN { control } "
+    if nodename(node).count('@') == 0
+      query << "AND NONE( rel in r WHERE type(rel)='RBAC_SET_MBX' OR type(rel)='RBAC_ADD_MBXPERM' \
+      OR type(rel)='RBAC_ADD_MBXFOLDERPERM' OR type(rel)='RBAC_SET_MBXFOLDERPERM' OR type(rel)='RBAC_CONNECT_MBX' \
+      OR type(rel)='RBAC_NEW_MBXEXPORTREQ' \
+      ) "
+    end
     query << "RETURN path"
 
     debug "cypher query: #{query} (#control=#{control.size})"
