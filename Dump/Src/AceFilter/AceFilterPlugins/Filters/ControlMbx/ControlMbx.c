@@ -87,7 +87,6 @@ BOOL PLUGIN_FILTER_FILTERACE(
 	_Inout_ PIMPORTED_ACE ace
 ) {
 	DWORD dwAccessMask = 0;
-	DWORD dwFlags = 0;
 	DWORD i = 0;
 
 	//
@@ -100,7 +99,6 @@ BOOL PLUGIN_FILTER_FILTERACE(
 	// Get properties
 	//
 	dwAccessMask = api->Ace.GetAccessMask(ace);
-	dwFlags = IS_OBJECT_ACE(ace->imported.raw) ? api->Ace.GetObjectFlags(ace) : 0;
 
 	//
 	// Control case : Generic right GENERIC_READ

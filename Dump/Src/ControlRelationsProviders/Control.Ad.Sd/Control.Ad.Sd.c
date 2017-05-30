@@ -4,12 +4,11 @@
 
 /* --- DEFINES -------------------------------------------------------------- */
 #define CONTROL_AD_SD_DEFAULT_OUTFILE       _T("control.ad.sd.csv")
-#define CONTROL_AD_OWNER_KEYWORD            _T("AD_OWNER")
-#define CONTROL_AD_NULL_DACL_KEYWORD        _T("AD_NULL_DACL")
+#define CONTROL_AD_OWNER_KEYWORD            _T("SD_OWNER")
+#define CONTROL_AD_NULL_DACL_KEYWORD        _T("SD_NULL_DACL")
 
 
 /* --- TYPES ---------------------------------------------------- */
-/* --- PRIVATE VARIABLES ---------------------------------------------------- */
 /* --- PRIVATE VARIABLES ---------------------------------------------------- */
 /* --- PUBLIC VARIABLES ----------------------------------------------------- */
 /* --- PRIVATE FUNCTIONS ---------------------------------------------------- */
@@ -17,9 +16,9 @@ static void CallbackSdOwner(
 	_In_ CSV_HANDLE hOutfile,
 	_In_ CSV_HANDLE hDenyOutfile,
 	_Inout_ LPTSTR *tokens
-    ) {
-    BOOL bResult = FALSE;
-    PSECURITY_DESCRIPTOR pSd;
+) {
+	BOOL bResult = FALSE;
+	PSECURITY_DESCRIPTOR pSd;
 	BOOL bOwnerDefaulted = FALSE;
 	PSID pSidOwner = NULL;
 	CACHE_OBJECT_BY_SID searched = { 0 };
@@ -35,10 +34,10 @@ static void CallbackSdOwner(
 	if (!pSd)
 		FATAL(_T("Cannot allocate pSd for %s"), tokens[LdpAceSd]);
 	Unhexify(pSd, tokens[LdpAceSd]);
-    if (!IsValidSecurityDescriptor(pSd)) {
-        LOG(Err, _T("Invalid security descriptor"));
-        return;
-    }
+	if (!IsValidSecurityDescriptor(pSd)) {
+		LOG(Err, _T("Invalid security descriptor"));
+		return;
+	}
 	bResult = GetSecurityDescriptorOwner(pSd, &pSidOwner, &bOwnerDefaulted);
 	if (!bResult) {
 		LOG(Err, _T("Cannot get Owner from SD : <%u>"), GetLastError());
@@ -48,19 +47,25 @@ static void CallbackSdOwner(
 		LOG(Dbg, _T("No Owner from SD : <%u>"), tokens[LdpAceDn]);
 		return;
 	}
+
 	ConvertSidToStringSid(pSidOwner, &searched.sid);
-	CharLower(searched.sid);
-	bResult = CacheEntryLookup(
-		ppCache,
-		(PVOID)&searched,
-		&returned
-	);
-	if (!returned) {
-		LOG(Dbg, _T("cannot find object-by-sid entry for <%d>"), tokens[LdpListPrimaryGroupID]);
-		owner = searched.sid;
+	if (!_tcsicmp(_T("S-1-5-10"), searched.sid)) {
+		owner = tokens[LdpAceDn];
 	}
 	else {
-		owner = returned->dn;
+		CharLower(searched.sid);
+		bResult = CacheEntryLookup(
+			ppCache,
+			(PVOID)&searched,
+			&returned
+		);
+		if (!returned) {
+			LOG(Dbg, _T("cannot find object-by-sid entry for <%d>"), tokens[LdpListPrimaryGroupID]);
+			owner = searched.sid;
+		}
+		else {
+			owner = returned->dn;
+		}
 	}
 
 	bResult = ControlWriteOutline(hOutfile, owner, tokens[LdpAceDn], CONTROL_AD_OWNER_KEYWORD);

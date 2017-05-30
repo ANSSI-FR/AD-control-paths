@@ -17,6 +17,10 @@ Param(
     
     [switch]$ldapOnly = $false,
     [switch]$sysvolOnly = $false,
+    
+    [string]$exchangeServer = $null,
+    [string]$exchangeUsername = $null,
+    [string]$exchangePassword = $null,
 	
 	  [switch]$fromExistingDumps = $false,
     [switch]$forceOverwrite = $false,
@@ -30,7 +34,7 @@ $globalTimer = $null
 $globalLogFile = $null
 $dumpLdap = $ldapOnly.IsPresent -or (!$ldapOnly.IsPresent -and !$sysvolOnly.IsPresent)
 $dumpSysvol = $sysvolOnly.IsPresent -or (!$ldapOnly.IsPresent -and !$sysvolOnly.IsPresent)
-$dumpExchange = $true
+$dumpExchange = $($exchangeServer -ne "")
 $date =  date -Format yyyyMMdd
 
 #
@@ -51,10 +55,15 @@ Function Usage([string]$errmsg = $null)
     
     Write-Output "- Optional parameters:"
     Write-Output "`t-help                           : show this help"
+
     Write-Output "`t-sysvolPath <PATH>              : path of the 'Policies' folder of the sysvol (default: use target DC)"
     Write-Output "`t-user <USRNAME> -password <PWD> : username and password to use for explicit authentication"
     Write-Output "`t-logLevel <LVL>                 : log level, possibles values are ALL,DBG,INFO(default),WARN,ERR,SUCC,NONE"
     Write-Output "`t-ldapPort <PORTNUM>             : ldap port to use (default is 389)"
+    
+    Write-Output "`t-exchangeServer <EXCHSRV>       : dump Exchange data (needs EWS managed API) "
+    Write-Output "`t-exchangeUser <EXCHUSR>         : Exchange Trusted Subsystem member NOT in DA/EA/Org Mgmt"
+    Write-Output "`t-exchangePassword <EXCHPWD>     : password of exchangeUser"
     
     Write-Output "`t-useBackupPriv                  : use backup privilege to access -sysvolPath"
     Write-Output "`t-ldapOnly                       : only dump data from the LDAP directory"
@@ -91,6 +100,10 @@ if($ldapOnly.IsPresent -and $sysvolOnly.IsPresent) {
 if($forceOverwrite.IsPresent -and $resume.IsPresent) {
     Usage "-forceOverwrite and -resume cannot be used at the same time"
 }
+if([bool]$exchangeUsername -bXor [bool]$exchangePassword) {
+    Usage "-exchangeUser and -exchangePassword must both be specified along with exchangeServer"
+}
+
 
 #
 # Functions
@@ -226,6 +239,9 @@ if($ldapOnly.IsPresent) {
 } else {
     Write-Output-And-Global-Log "[+] Dumping LDAP and SYSVOL data`n"
 }
+if($dumpExchange.IsPresent) {
+    Write-Output-And-Global-Log "[+] Dumping EXCHANGE data`n"
+}
 if($fromExistingDumps.IsPresent) {
     Write-Output-And-Global-Log "[+] Working from existing dump files`n"
 }
@@ -332,6 +348,7 @@ Execute-Cmd-Wrapper -cmd @"
 # EXCHANGE data
 #
 if($dumpExchange) {
+# DB to contained mailboxes
 Execute-Cmd-Wrapper -cmd @"
 .\Bin\Control.Exch.Db.exe
     -D '$logLevel'
@@ -340,6 +357,7 @@ Execute-Cmd-Wrapper -cmd @"
     -O '$outputDir\Relations\$filesPrefix.control.exch.db.csv'
 "@
 
+# RBAC Principals to Roles
 Execute-Cmd-Wrapper -cmd @"
 .\Bin\Control.Exch.Role.exe
     -D '$logLevel'
@@ -348,12 +366,31 @@ Execute-Cmd-Wrapper -cmd @"
     -O '$outputDir\Relations\$filesPrefix.control.exch.role.csv'
 "@
 
+# RBAC Roles to RoleEntries
 Execute-Cmd-Wrapper -cmd @"
 .\Bin\Control.Exch.RoleEntry.exe
     -D '$logLevel'
     -L '$outputDir\Logs\$filesPrefix.control.exch.roleentry.log'
 	  -I '$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
     -O '$outputDir\Relations\$filesPrefix.control.exch.roleentry.csv'
+"@
+
+# RBAC Static RoleEntries to Exchange Trusted Subsystem
+$exchangeTrustedSubsystemDN = 'cn=exchange trusted subsystem,ou=microsoft exchange security groups,dc=' + $domainDnsName.ToLower().Replace('.',',dc=')
+$staticRoleEntries = Get-Content '.\Utils\Exch.RBAC.Static.RoleEntry.csv' -Encoding Unicode
+'dnMaster:START_ID,dnSlave:END_ID,keyword:TYPE' | Out-File -FilePath $outputDir'\Relations\'$filesPrefix'.static.exch.roleentry.csv' -Encoding Unicode
+foreach ($roleEntry in $staticRoleEntries) {
+    $roleEntry + ',"' + $exchangeTrustedSubsystemDN + '",RBAC_STATIC_ROLEENTRY' | Out-File -FilePath $outputDir'\Relations\'$filesPrefix'.static.exch.roleentry.csv' -Encoding Unicode -Append
+}
+
+# OWNER MBX SD
+Execute-Cmd-Wrapper -cmd @"
+.\Bin\Control.Ad.Sd.exe
+    -D '$logLevel'
+    -L '$outputDir\logs\$filesPrefix.control.ad.sd.log'
+	  -I '$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
+  	-A '$outputDir\Ldap\$($filesPrefix)_LDAP_mbxsd.csv'
+    -O '$outputDir\Relations\$filesPrefix.control.exch.mbxsd.csv'
 "@
 
 # Filter DB SD
@@ -384,6 +421,31 @@ Execute-Cmd-Wrapper -cmd @"
     ldpobj='$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
     ldpsch='$outputDir\Ldap\$($filesPrefix)_LDAP_sch.csv'
     ldpace='$outputDir\Ldap\$($filesPrefix)_LDAP_mbxsd.csv'
+"@
+
+# Inbox Folder MAPI SD
+Execute-Cmd-Wrapper -cmd @"
+.\Utils\Get-MAPIFoldersPermissions.ps1
+    -infile '$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
+    -server $ExchangeServer
+    -outfile '$outputDir\Ldap\$($filesPrefix)_EWS_foldersd.csv'
+    -username $ExchangeUsername
+    -password $ExchangePassword
+"@
+
+# Filter MAPI Folders SD
+Execute-Cmd-Wrapper -cmd @"
+.\Bin\AceFilter.exe
+    --loglvl='$logLevel'
+    --logfile='$outputDir\Logs\$filesPrefix.acefilter.folder.sd.log'
+    --importer='LdapDump'
+    --writer='MasterSlaveRelation'
+    --filters='MapiFolder'
+    --
+    msrout='$outputDir\Relations\$filesPrefix.acefilter.folder.sd.csv'
+    ldpobj='$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
+    ldpsch='$outputDir\Ldap\$($filesPrefix)_LDAP_sch.csv'
+    ldpace='$outputDir\Ldap\$($filesPrefix)_EWS_foldersd.csv'
 "@
 
 }

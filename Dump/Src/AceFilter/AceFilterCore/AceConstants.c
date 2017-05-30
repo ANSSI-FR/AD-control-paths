@@ -44,6 +44,9 @@ const LPTSTR gc_AceRelations[ACE_REL_COUNT] = {
 	STR(EXCH_CHANGEOWNER),
 	STR(EXCH_FULLACCESS),
 	STR(EXCH_EXTERNALACCOUNT),
+	STR(MAPI_WRITESD),
+	STR(MAPI_WRITEOWNER),
+	STR(MAPI_READBODY)
 };
 
 static_assert(ARRAY_COUNT(gc_AceRelations) == ACE_REL_COUNT, "inconsistent number of relations in gcs_AceRelations");
