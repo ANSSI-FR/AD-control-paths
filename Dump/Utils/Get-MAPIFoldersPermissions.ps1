@@ -166,6 +166,17 @@ If ($TrustAnySSL) {
 $uri=[system.URI] "https://$server/ews/exchange.asmx"
 $service.Url = $uri
 
+# Test EWS Connectivity
+$testFolder = $null
+$testFolderId = new-object Microsoft.Exchange.WebServices.Data.FolderId([Microsoft.Exchange.WebServices.Data.WellKnownFolderName]::"Root")
+$testFolderView = New-Object Microsoft.Exchange.WebServices.Data.FolderView(1)
+try {
+$service.FindFolders($testFolderId, $testFolderView) | Out-Null
+}
+catch {
+  $Error[0].Exception
+  exit 1
+}
 }
 
 Process {
