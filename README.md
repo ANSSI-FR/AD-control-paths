@@ -1,9 +1,9 @@
 # Active Directory Control Paths
-
+## "Who Can Read the CEO's Emails Edition"
 ![An example of control paths graph](graph-example.png "An example of control paths graph")
 
 Control paths in Active Directory are an aggregation of "control relations" between entities of the domain (users, computers, groups, GPO, containers, etc.)
-which can be visualized as graphs (such as above) and whose purpose is to answer questions like *"Who can get 'Domain Admins' privileges ?"* or *"What resources can a user control ?"*.
+which can be visualized as graphs (such as above) and whose purpose is to answer questions like *"Who can get 'Domain Admins' privileges ?"* or *"What resources can a user control ?"* and even *"Who can read the CEO's emails ?"*.
 
 The topic has been presented during a talk at the French conference SSTIC-2014. Our slides and paper can be found here:
 [https://www.sstic.org/2014/presentation/chemins\_de\_controle\_active\_directory/](https://www.sstic.org/2014/presentation/chemins_de_controle_active_directory/).
@@ -12,6 +12,9 @@ This repository contains tools that can be used to generate such graphs.
 
 ---
 ## CHANGES
+Adding EXCHANGE permissions in v1.3 "Who Can Read the CEO's Emails Edition".
+Permissions extracted from AD Users, Mailbox/DB descriptors, RBAC and MAPI folders.
+
 Better resume features, nodes clustering (through OVALI) in v1.2.3.
 
 New control paths are added in v1.2.2: RoDC and LAPS.
@@ -66,13 +69,15 @@ A few false positives were fixed and new control paths were added, so running it
   
         gem install -f --local <Path_to>\*.gem
 
+0. Install EWS Managed API (if dumping Exchange permissions) from https://go.microsoft.com/fwlink/?LinkId=255472
+
 ## 2. USAGE CONTEXT
 
 **Note:** None of these tools need to run on a domain controller.
 
 Generating control paths graphs for your domain takes the 4 following steps:
 
-0. **Dump** data from the LDAP directory and the SYSVOL and analyze it to form control relationships.
+0. **Dump** data from LDAP directory, SYSVOL and EWS and run analyzers to form control relationships.
 0. **Import** these relations into a graph-oriented database (Neo4j).
 0. **Query** that database to export various nodes lists, control paths, or **create JSON files** representing control paths graphs.
 0. **Visualize** graphs created from those JSON files.
@@ -134,6 +139,8 @@ This produces some `.csv` and `.log` files as follow:
     If you don't want your password to appear in the command line but still use explicit authentication use the following `runas` command, then launch the `Dump.ps1` script without `-user` and `-password` options:
 
         C:\> runas /netonly /user:DOM\username powershell.exe
+        
+- `-exchangeServer`, `-exchangeUser` and `-exchangePassword`: explicit authentication for EWS on a CAS Exchange server. Use an Exchange Trusted Subsystem member account, but NOT DA/EA/Org Mgmgt.
   
 - `-logLevel`: change log and output verbosity (possible values are `ALL`, `DBG`, `INFO` (default), `WARN`, `ERR`, `SUCC` and `NONE`).
 - `-ldapOnly` and `-sysvolOnly`: dump only data from the LDAP directory (respectively from the SYSVOL).
@@ -160,7 +167,7 @@ You may need admin permissions to start/stop Neo4j.
 ```
     $env:DUMP = "PATH_TO\yyyymmdd_domainfqdn\" 
 ```
-- In neo4j folder:
+- In neo4j folder (you can copy/paste this):
 ```
     .\bin\neo4j-admin import --database adcp.db --id-type string  `
     --nodes $env:DUMP\Ldap\all_nodes.csv  `
@@ -197,9 +204,11 @@ You should use --denyacefile if you have non-empty deny relations files:
 
     ruby query.rb --quick --denyacefile $((dir $env:DUMP\Relations\*.deny.csv) -join ',')
    
-### To search for a node from its DN and get a graph to it (useful if AD is not in English):
+### To search for a node from its DN or an email address and get a graph to it (useful if AD is not in English):
 
     ruby query.rb --search "cn=administrateurs,"
+    
+    ruby query.rb --search "ceo@domain.local"
     
   (This will return a node id number)
   
@@ -239,6 +248,7 @@ JSON data files as graphs.
 Open Visualize/index.html with a web brower (Chrome/Chromium is preferred).
 Open one of the generated json files.
 
+For better visibility, you might want to right click -> cluster some similar nodes and to setup hierarchical viewing with the menu on the left.
 
 ## 7. OTHER QUERYING EXAMPLES
 

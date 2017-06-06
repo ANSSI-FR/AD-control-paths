@@ -100,7 +100,7 @@ if($ldapOnly.IsPresent -and $sysvolOnly.IsPresent) {
 if($forceOverwrite.IsPresent -and $resume.IsPresent) {
     Usage "-forceOverwrite and -resume cannot be used at the same time"
 }
-if([bool]$exchangeUsername -bXor [bool]$exchangePassword) {
+if(([bool]$exchangeUsername -bXor [bool]$exchangeServer) -bOr ([bool]$exchangeUsername -bXor [bool]$exchangePassword)) {
     Usage "-exchangeUser and -exchangePassword must both be specified along with exchangeServer"
 }
 

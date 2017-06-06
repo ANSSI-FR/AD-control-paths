@@ -91,7 +91,7 @@ else
     "http://go.microsoft.com/fwlink/?LinkId=255472"
     ""
     "Exiting Script."
-    throw 'EWS unavailable on this system. http://go.microsoft.com/fwlink/?LinkId=255472'
+    throw 'EWS unavailable on this system. https://go.microsoft.com/fwlink/?LinkId=255472'
     exit 1
     }
 
