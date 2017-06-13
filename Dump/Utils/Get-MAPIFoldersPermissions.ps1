@@ -68,7 +68,11 @@ Param (
 Begin {
 
 try{
-$EmailAddress = Import-Csv $infile -Encoding Unicode | Where-Object {$_.mail -ne "" -and $_.mail -notlike "SystemMailbox*" -and $_.mail -notlike "HealthMailbox*"} | Select mail 
+# Powershell v2 Import-Csv does not have -Encoding
+$tmpfile = $infile+".tmp"
+Get-Content -Encoding Unicode $infile | Out-File -Encoding Unicode $tmpfile
+$EmailAddress = Import-Csv $tmpfile | Where-Object {$_.mail -ne "" -and $_.mail -notlike "SystemMailbox*" -and $_.mail -notlike "HealthMailbox*"} | Select mail 
+Remove-Item $tmpfile
 }
 catch{
 #Error[0].Exception
