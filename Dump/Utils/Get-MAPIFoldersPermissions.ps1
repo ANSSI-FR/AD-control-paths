@@ -9,6 +9,14 @@ Inspired (and some code) by https://ingogegenwarth.wordpress.com/2015/04/16/get-
 
 Get folder mailbox permissions from EWS
 
+.PARAMETER infile
+
+Input CSV file with header comprising a mail field
+
+.PARAMETER outfile
+
+Output CSV file with PR_NT_SECURITY_DESCRIPTORS in hex
+
 .PARAMETER server
 
 Exchange CAS
@@ -69,10 +77,11 @@ Begin {
 
 try{
 # Powershell v2 Import-Csv does not have -Encoding
-$tmpfile = $infile+".tmp"
-Get-Content -Encoding Unicode $infile | Out-File -Encoding Unicode $tmpfile
-$EmailAddress = Import-Csv $tmpfile | Where-Object {$_.mail -ne "" -and $_.mail -notlike "SystemMailbox*" -and $_.mail -notlike "HealthMailbox*"} | Select mail 
-Remove-Item $tmpfile
+#$tmpfile = $infile+".tmp"
+#Get-Content -Encoding Unicode $infile | Out-File -Encoding Unicode $tmpfile
+#$EmailAddress = Import-Csv $tmpfile | Where-Object {$_.mail -ne "" -and $_.mail -notlike "SystemMailbox*" -and $_.mail -notlike "HealthMailbox*"} | Select mail 
+#Remove-Item $tmpfile
+$EmailAddress = Import-Csv $infile -Encoding Unicode | Where-Object {$_.mail -ne "" -and $_.mail -notlike "SystemMailbox*" -and $_.mail -notlike "HealthMailbox*"} | Select mail 
 }
 catch{
 #Error[0].Exception
@@ -109,10 +118,16 @@ $ExchangeVersion = [Microsoft.Exchange.WebServices.Data.ExchangeVersion]::Exchan
 $inboxFilter = new-object Microsoft.Exchange.WebServices.Data.SearchFilter+IsEqualTo([Microsoft.Exchange.WebServices.Data.FolderSchema]::DisplayName, "Inbox")
 $sentmailFilter = new-object Microsoft.Exchange.WebServices.Data.SearchFilter+IsEqualTo([Microsoft.Exchange.WebServices.Data.FolderSchema]::DisplayName, "Sent Items")
 
+$boiteString = "Bo$([char]0x00ee)te de r$([char]0x00e9)ception"
+$elementsString = "$([char]0x00c9)l$([char]0x00e9)ments envoy$([char]0x00e9)s"
+$boiteFilter = new-object Microsoft.Exchange.WebServices.Data.SearchFilter+IsEqualTo([Microsoft.Exchange.WebServices.Data.FolderSchema]::DisplayName, $boiteString)
+$elementsFilter = new-object Microsoft.Exchange.WebServices.Data.SearchFilter+IsEqualTo([Microsoft.Exchange.WebServices.Data.FolderSchema]::DisplayName, $elementsString)
 
 $compoundFilter = New-Object Microsoft.Exchange.WebServices.Data.SearchFilter+SearchFilterCollection([Microsoft.Exchange.WebServices.Data.LogicalOperator]::Or)
 $compoundFilter.add($inboxFilter)
 $compoundFilter.add($sentmailFilter)
+$compoundFilter.add($boiteFilter)
+$compoundFilter.add($elementsFilter)
 
 
 ## Create Exchange Service Object
@@ -224,6 +239,8 @@ function ForEach-Parallel {
                         $thread.instance.endinvoke($thread.handle)
                         $thread.instance.dispose()
                         $threads[$i] = $null
+                        $boxCounter++
+                        Write-Progress -Activity "Processing mailboxes..." -Status "Current mailbox: $boxCounter / $boxTotal"
                     }
                     else {
                         $notdone = $true
@@ -239,6 +256,7 @@ function ForEach-Parallel {
 ###################################
 $mutexName = "outfileMutex-" + [guid]::NewGuid().Guid
 $outfilePath = Resolve-Path $outfile
+
 try{
 $threadParams = @()
 $EmailAddress | ForEach {
@@ -253,12 +271,13 @@ $obj | Add-Member -type NoteProperty -Name mutexName -Value $mutexName
 $threadParams += $obj
 }
 
+#"Processing " + $EmailAddress.count + " emails"
+$boxTotal = $EmailAddress.count
+$boxCounter = 0
 
 $threadParams | ForEach-Parallel  -Maxthread $Threads {
-
 $MailboxName = $_.mail
 $outfile = $_.outfile
-
 $mtx = New-Object System.Threading.Mutex($false, $_.mutexName)
 
 function BinToHex {
@@ -291,11 +310,20 @@ $fvFolderView.PropertySet = $psPropertySet;
 
 	
 $fiResult = $null
-do {
-
+try {
 $fiResult = $_.Service.FindFolders($folderidcnt,$_.compoundFilter,$fvFolderView)
-$MailboxName
+}
+catch {
+continue
+}
 
+#$mtx.WaitOne() | Out-Null
+#$MailboxName +" " + $fiResult.TotalCount + " folders" | Out-File -FilePath $outfile -Append -Encoding Unicode
+#$mtx.ReleaseMutex()
+
+if($fiResult.TotalCount -eq 0) {
+continue
+}
 # Add Properties for the Folder Property Set
 $PR_NT_SECURITY_DESCRIPTOR = new-object Microsoft.Exchange.WebServices.Data.ExtendedPropertyDefinition(0x0E27, [Microsoft.Exchange.WebServices.Data.MapiPropertyType]::Binary);
 $folderPropset = new-object Microsoft.Exchange.WebServices.Data.PropertySet([Microsoft.Exchange.WebServices.Data.BasePropertySet]::FirstClassProperties)
@@ -315,9 +343,6 @@ ForEach ($Folder in $fiResult) {
 	}
 #end loop of folders
 }
-
-$fvFolderView.Offset += $fiResult.Folders.Count
-}while($fiResult.MoreAvailable -eq $true)
 	}
 }
 catch{

@@ -131,6 +131,10 @@ BOOL PLUGIN_WRITER_WRITEACE(
 
 	resolvedTrustee = api->Resolver.ResolverGetAceTrusteeStr(ace);
 	resolvedMail = api->Resolver.ResolverGetAceObjectMail(ace);
+	if (!resolvedMail) {
+		API_LOG(Dbg, _T("Object has mbx sd without mail address : <%s>"), ace->imported.objectDn);
+		return TRUE;
+	}
 
 	for (i = 0; i < ACE_REL_COUNT; i++) {
 		if (HAS_RELATION(ace, i)) {
