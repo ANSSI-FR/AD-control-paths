@@ -42,7 +42,7 @@ A few false positives were fixed and new control paths were added, so running it
 - **Import**, **Query** and **Visualize** steps can run on the same machine or on anything supporting Neo4j, Java and Ruby. They have been tested on Windows and Linux.
 
 
-### Building steps (or just download the latest pre-compiled, signed binaries from the Github release tab):
+### Building steps (or just download the latest pre-compiled, signed binaries from the Github Releases tab):
 
  - Build the 3 solutions in the subfolders of /Dump/Src/ with an up-to-date Visual Studio (Community version works). Targets must be:
    - Release/x64 for AceFilter
@@ -159,7 +159,7 @@ You may need admin permissions to start/stop Neo4j.
 
 0. Stop the Neo4j server if it is started:
 ```
-    $env:NEO4J\bin\neo4j stop
+    .\bin\neo4j stop
 ```
 0. Import CSV files in a new graph database adcp.db:
 
@@ -169,13 +169,14 @@ You may need admin permissions to start/stop Neo4j.
 ```
 - In neo4j folder (you can copy/paste this):
 ```
-    .\bin\neo4j-admin import --database adcp.db --id-type string  `
+    .\bin\neo4j-import --into adcp.db --id-type string  `
     --nodes $env:DUMP\Ldap\all_nodes.csv  `
     --relationships $((dir $env:DUMP\relations\*.csv -exclude *.deny.csv) -join ',') `
     --input-encoding UTF-16LE --multiline-fields=true --legacy-style-quoting=false
 ```
 
-  Headers-related errors will be raised and can be ignored. It is still a good idea to have a look at the import.report file.
+  Headers-related errors will be raised and can be ignored. It is still a good idea to have a look at the bad.log file.
+  Do not use the "admin-tool import" command, even though it is supposed to do the same thing. Parameters passing is currently bugged.
 		
 0. Modify Neo4j default configuration file: conf/neo4j.conf. Set the following:
 		
