@@ -63,7 +63,20 @@ A few false positives were fixed and new control paths were added, so running it
 
 **Note:** Neo4j 3.2.0-alpha05 fixes an escape bug in CSV import that happens regularly with LDAP data.
 
-0. Install Neo4j service as admin: .\bin\neo4j.bat install-service
+0. Install Neo4j service as admin: .\bin\neo4j.bat install-service -Verbose
+
+0. Modify Neo4j default configuration file: conf/neo4j.conf. Set the following:
+		
+- dbms.active_database=adcp.db
+- cypher.forbid_shortestpath_common_nodes=false
+		
+0. Start the Neo4j server:
+
+        .\bin\neo4j start -Verbose
+
+0. Change the default password for the Neo4j REST interface. Navigate to `http://localhost:7474` (the web interface should be running). 
+   Enter the default username and password (`neo4j` for both), then enter `secret` as your new password (Hardcoded in the Query script, can be changed with the `--password` flag).
+   By default, Neo4j only listens to local connections.
 
 0. Install Ruby from https://rubyinstaller.org/downloads/ or from your distribution. A 64 bits version is recommended.
 
@@ -174,7 +187,7 @@ You may need admin permissions to start/stop Neo4j.
 ```
 - In neo4j folder (you can copy/paste this):
 ```
-    .\bin\neo4j-import --into data/dabases/adcp.db --id-type string  `
+    .\bin\neo4j-import --into data/databases/adcp.db --id-type string  `
     --nodes $env:DUMP\Ldap\all_nodes.csv  `
     --relationships $((dir $env:DUMP\relations\*.csv -exclude *.deny.csv) -join ',') `
     --input-encoding UTF-16LE --multiline-fields=true --legacy-style-quoting=false
@@ -183,20 +196,6 @@ You may need admin permissions to start/stop Neo4j.
   Headers-related errors will be raised and can be ignored. It is still a good idea to have a look at the bad.log file.
   Do not use the "admin-tool import" command, even though it is supposed to do the same thing. Parameters passing is currently bugged.
 		
-0. Modify Neo4j default configuration file: conf/neo4j.conf. Set the following:
-		
-- dbms.active_database=adcp.db
-- cypher.forbid_shortestpath_common_nodes=false
-		
-0. Start the Neo4j server:
-
-        .\bin\neo4j install-service -Verbose
-        .\bin\neo4j start -Verbose
-
-0. Change the default password for the Neo4j REST interface. Navigate to `http://localhost:7474` (the web interface should be running). 
-   Enter the default username and password (`neo4j` for both), then enter `secret` as your new password (Hardcoded in the Query script, can be changed with the `--password` flag).
-   By default, Neo4j only listens to local connections.
-   
 
 ## 5. QUERYING THE GRAPH DATABASE
 
