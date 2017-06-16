@@ -169,7 +169,7 @@ You may need admin permissions to start/stop Neo4j.
 ```
 - In neo4j folder (you can copy/paste this):
 ```
-    .\bin\neo4j-import --into adcp.db --id-type string  `
+    .\bin\neo4j-import --into data/dabases/adcp.db --id-type string  `
     --nodes $env:DUMP\Ldap\all_nodes.csv  `
     --relationships $((dir $env:DUMP\relations\*.csv -exclude *.deny.csv) -join ',') `
     --input-encoding UTF-16LE --multiline-fields=true --legacy-style-quoting=false

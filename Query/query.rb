@@ -4,10 +4,14 @@
 require 'getoptlong'
 require 'fileutils'
 require 'csv'
+require 'rubygems'
 
 $LOAD_PATH.unshift '.'
-require 'lib/neowrapper'
-require 'lib/defaults'
+
+require_relative 'lib/neowrapper'
+require_relative 'lib/defaults'
+
+exit if Object.const_defined?(:Ocra) #allow ocra to create an exe without executing the entire script
 
 opts = GetoptLong.new(
   [ '--help', '-h', GetoptLong::NO_ARGUMENT ],

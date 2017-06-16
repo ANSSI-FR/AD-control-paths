@@ -89,12 +89,17 @@ catch{
 #$EmailAddress
 "mail,PR_NT_SECURITY_DESCRIPTOR" | Out-File -FilePath $outfile -Encoding Unicode
 
-## Load Managed API dll
-###CHECK FOR EWS MANAGED API, IF PRESENT IMPORT THE HIGHEST VERSION EWS DLL, ELSE EXIT
+# Load Managed API dll
+# Check for installed EWS on the system, else use redistributable from Github release, or fail
 $EWSDLL = (($(Get-ItemProperty -ErrorAction SilentlyContinue -Path Registry::$(Get-ChildItem -ErrorAction SilentlyContinue -Path 'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Exchange\Web Services'|Sort-Object Name -Descending| Select-Object -First 1 -ExpandProperty Name)).'Install Directory') + "Microsoft.Exchange.WebServices.dll")
-if (Test-Path $EWSDLL)
+
+if ($false)#Test-Path $EWSDLL)
     {
     Import-Module $EWSDLL
+    }
+elseif (Test-Path $($PSScriptRoot + "\..\Bin\Microsoft.Exchange.WebServices.dll"))
+    {
+    Import-Module $($PSScriptRoot + "\..\Bin\Microsoft.Exchange.WebServices.dll")
     }
 else
     {
