@@ -27,18 +27,20 @@ A few false positives were fixed and new control paths were added, so running it
 
 ---
 ## QUICK START
-- Download and extract the latest binary release from the Github Releases tab on a Windows machine.
+- Download and extract the latest binary release from the Github Releases tab on a Windows machine with Java.
 - Skip to part 3 (Dump step)
 
+
 ---
-0. Install / Prerequisites
-0. Usage context
-0. Dump data into CSV files
-0. Import CSV files in graph database
-0. Query graph database
-0. Visualize graphs
-0. Other Querying Examples
-0. Authors
+## TABLE OF CONTENT
+1. Install / Prerequisites
+2. Usage context
+3. Dump data into CSV files
+4. Import CSV files in graph database
+5. Query graph database
+6. Visualize graphs
+7. Other Querying Examples
+8. Authors
 
 
 ## 1. INSTALL / PREREQUISITES
