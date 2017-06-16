@@ -24,6 +24,12 @@ Some very large ADs with over 1M objects and 150M ACEs have been processed in a 
 
 A few false positives were fixed and new control paths were added, so running it again on already tested ADs might be a good idea.
 
+
+---
+## QUICK START
+- Download and extract the latest binary release from the Github Releases tab on a Windows machine.
+- Skip to part 3 (Dump step)
+
 ---
 0. Install / Prerequisites
 0. Usage context
@@ -34,22 +40,22 @@ A few false positives were fixed and new control paths were added, so running it
 0. Other Querying Examples
 0. Authors
 
+
 ## 1. INSTALL / PREREQUISITES
 
-### Note:
+### Note
 
 - **Dump** step runs on Windows only (tested on Windows 7 and later).
 - **Import**, **Query** and **Visualize** steps can run on the same machine or on anything supporting Neo4j, Java and Ruby. They have been tested on Windows and Linux.
 
-
-### Building steps (or just download the latest pre-compiled, signed binaries from the Github Releases tab):
+### Building
 
  - Build the 3 solutions in the subfolders of /Dump/Src/ with an up-to-date Visual Studio (Community version works). Targets must be:
    - Release/x64 for AceFilter
    - Release/x64 for ControlRelationProviders
    - RelADCP/x64 for DirectoryCrawler.
 
-### Installation steps :
+### Prerequisites
 
 0. Install a Java JRE from https://java.com/en/download/manual.jsp or from your distribution.
 
@@ -70,6 +76,7 @@ A few false positives were fixed and new control paths were added, so running it
         gem install -f --local <Path_to>\*.gem
 
 0. Install EWS Managed API (if dumping Exchange permissions) from https://go.microsoft.com/fwlink/?LinkId=255472
+
 
 ## 2. USAGE CONTEXT
 
@@ -111,8 +118,6 @@ If no access to the domain is given, control graphs can be realized from offline
 **Warning:** Accessing the Sysvol share from a non-domain machine can be blocked by UNC Paths hardening, which is a client-side parameter enabled by default since Windows 10. Disable it like this:
 Set-ItemProperty -Path HKLM:\Software\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths -Name "\\*\SYSVOL" -Value "RequireMutualAuthentication=0"
 
-**Note:** The Dump.ps1 script configures the outputDir to be a NTFS compressed folder. Flat unicode CSVs files can take quite a lot of disk space otherwise.
-
 Use the powershell script `Dump\Dump.ps1` to dump data from the LDAP directory and SYSVOL.
 The simplest example is:
 
@@ -122,8 +127,7 @@ The simplest example is:
       -domainDnsName    <domain FQDN>
 
 - `-domainController` can be an real domain controller, or a machine exposing the LDAP directory from a re-mounted `ntds.dit` using `dsamain`.
-- `-sysvolPath` can be a network path (example `\\192.168.25.123\sysvol\domain.local\Policies`) or a path to a local robocopy of this folder.
-- Otherwise sysvolPath defaults to `\\domainController\sysvol\domainDnsName\Policies`.
+
 
 This produces some `.csv` and `.log` files as follow:
 
@@ -139,7 +143,7 @@ This produces some `.csv` and `.log` files as follow:
     If you don't want your password to appear in the command line but still use explicit authentication use the following `runas` command, then launch the `Dump.ps1` script without `-user` and `-password` options:
 
         C:\> runas /netonly /user:DOM\username powershell.exe
-        
+- `-sysvolPath` can be a network path (example `\\192.168.25.123\sysvol\domain.local\Policies`) or a path to a local robocopy of this folder. Defaults to `\\domainController\sysvol\domainDnsName\Policies`.
 - `-exchangeServer`, `-exchangeUser` and `-exchangePassword`: explicit authentication for EWS on a CAS Exchange server. Use an Exchange Trusted Subsystem member account, but NOT DA/EA/Org Mgmgt.
   
 - `-logLevel`: change log and output verbosity (possible values are `ALL`, `DBG`, `INFO` (default), `WARN`, `ERR`, `SUCC` and `NONE`).
@@ -148,8 +152,9 @@ This produces some `.csv` and `.log` files as follow:
 - `-useBackupPriv`: use backup privilege to access `-sysvolPath`, which is needed when using a robocopy. You must use an administrator account to use this option.
 - `-generateCmdOnly`: generate the list of commands to use to dump the data, instead of executing these commands. This can be useful on systems where the powershell's execution-policy doesn't allow unsigned scripts to be executed, or on which powershell is not installed in a tested version (v2.0 and later).
 - `-fromExistingDumps`: skip the LDAP request step and work from files found in the Ldap\ folder.
-- `-resume`: look for the first non-successful command in the same-day, same-target folder and resume from there
+- `-resume`: look for the first non-successful command in the same-day, same-target folder and resume from there. Can be used to resume if your connection to the DC went down.
 - `-forceOverwrite`: overwrite any previous dump files from the same-day, same-target folder
+
 
 ## 4. IMPORT CSV FILES INTO A GRAPH DATABASE
 
@@ -195,7 +200,7 @@ You may need admin permissions to start/stop Neo4j.
 
 ## 5. QUERYING THE GRAPH DATABASE
 
-The `Query/query.rb` program allows you to query the created Neo4j database.
+The `Query/query.rb` script (compiled as an exe in the release) is used to query the created Neo4j database.
 	
 ### Basic query to get a graph and paths of all nodes able to take control of the "Domain Admins" group:
 
@@ -214,6 +219,8 @@ You should use --denyacefile if you have non-empty deny relations files:
   (This will return a node id number)
   
     ruby query.rb --graph test.json <node id number>
+    
+  (This produces a json graph file, which you can visualize, see part 6)
 
 ### Automatic full audit mode (long)
 
@@ -236,8 +243,8 @@ The default output directory is `out` and contains the following generated files
        |- *_nodes.txt    # Lists of nodes existing in the above graphs
        \- *_paths.txt    # Lists of paths existing in the above graphs
 
-The default target are search with their english DN. You can choose another
-language with the `--lang` option. For now, only `en` and `fr` are supported.
+The default targets are searched with their English DN. You can choose another
+language with the `--lang` option. For now, only `en` and `fr` are supported in automatic mode.
 
 
 ## 6. VISUALIZE GRAPHS
@@ -245,11 +252,12 @@ language with the `--lang` option. For now, only `en` and `fr` are supported.
 ADCP uses the [OVALI](https://github.com/ANSSI-FR/OVALI) frontend to display
 JSON data files as graphs.
 
-0. Quickstart:
+0. Quick Start
 Open Visualize/index.html with a web brower (Chrome/Chromium is preferred).
 Open one of the generated json files.
 
 For better visibility, you might want to right click -> cluster some similar nodes and to setup hierarchical viewing with the menu on the left.
+
 
 ## 7. OTHER QUERYING EXAMPLES
 
