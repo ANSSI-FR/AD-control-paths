@@ -5,11 +5,6 @@
 Control paths in Active Directory are an aggregation of "control relations" between entities of the domain (users, computers, groups, GPO, containers, etc.)
 which can be visualized as graphs (such as above) and whose purpose is to answer questions like *"Who can get 'Domain Admins' privileges ?"* or *"What resources can a user control ?"* and even *"Who can read the CEO's emails ?"*.
 
-The topic has been presented during a talk at the French conference SSTIC-2014. Our slides and paper can be found here:
-[https://www.sstic.org/2014/presentation/chemins\_de\_controle\_active\_directory/](https://www.sstic.org/2014/presentation/chemins_de_controle_active_directory/).
-
-This repository contains tools that can be used to generate such graphs.
-
 ---
 ## CHANGES
 Adding EXCHANGE permissions in v1.3 "Who Can Read the CEO's Emails Edition".
@@ -130,8 +125,6 @@ If no access to the domain is given, control graphs can be realized from offline
 
 ## 3. DUMP DATA INTO CSV FILES
 
-**Warning:** Accessing the Sysvol share from a non-domain machine can be blocked by UNC Paths hardening, which is a client-side parameter enabled by default since Windows 10. Disable it like this:
-Set-ItemProperty -Path HKLM:\Software\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths -Name "\\*\SYSVOL" -Value "RequireMutualAuthentication=0"
 
 Use the powershell script `Dump\Dump.ps1` to dump data from the LDAP directory and SYSVOL.
 The simplest example is:
@@ -169,6 +162,9 @@ This produces some `.csv` and `.log` files as follow:
 - `-fromExistingDumps`: skip the LDAP request step and work from files found in the Ldap\ folder.
 - `-resume`: look for the first non-successful command in the same-day, same-target folder and resume from there. Can be used to resume if your connection to the DC went down.
 - `-forceOverwrite`: overwrite any previous dump files from the same-day, same-target folder
+
+**Warning:** Accessing the Sysvol share from a non-domain machine can be blocked by UNC Paths hardening, which is a client-side parameter enabled by default since Windows 10. Disable it like this:
+Set-ItemProperty -Path HKLM:\Software\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths -Name "\\*\SYSVOL" -Value "RequireMutualAuthentication=0"
 
 
 ## 4. IMPORT CSV FILES INTO A GRAPH DATABASE
@@ -362,3 +358,5 @@ queries. You can limit the maximum search depth with the `--maxdepth` option.
 Geraud de Drouas - ANSSI - 2015-2017
 
 Lucas Bouillot, Emmanuel Gras - ANSSI - 2014
+Presented at the French conference SSTIC-2014. Slides and paper can be found here:
+[https://www.sstic.org/2014/presentation/chemins\_de\_controle\_active\_directory/](https://www.sstic.org/2014/presentation/chemins_de_controle_active_directory/).
