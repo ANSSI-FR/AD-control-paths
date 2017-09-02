@@ -64,7 +64,8 @@ typedef enum _OBJ_CSV_TOKENS {
 
 typedef enum _ACE_CSV_TOKENS {
 	LdpAceDn = 0,
-	LdpAceSd = 1
+	LdpAceSd = 1,
+	LdpAceMail = 2
 } OBJ_CSV_TOKENS;
 
 typedef enum _REL_CSV_TOKENS {

@@ -44,11 +44,12 @@ static void CallbackSdOwner(
 		return;
 	}
 	if (!pSidOwner) {
-		LOG(Dbg, _T("No Owner from SD : <%u>"), tokens[LdpAceDn]);
+		LOG(Dbg, _T("No Owner from SD : <%s>"), tokens[LdpAceDn]);
 		return;
 	}
 
 	ConvertSidToStringSid(pSidOwner, &searched.sid);
+	// Owner is SELF
 	if (!_tcsicmp(_T("S-1-5-10"), searched.sid)) {
 		owner = tokens[LdpAceDn];
 	}
@@ -67,8 +68,11 @@ static void CallbackSdOwner(
 			owner = returned->dn;
 		}
 	}
-
-	bResult = ControlWriteOutline(hOutfile, owner, tokens[LdpAceDn], CONTROL_AD_OWNER_KEYWORD);
+	// securable object can be ACE DN or his mailbox (email address)
+	if (!STR_EMPTY(tokens[LdpAceMail]))
+		bResult = ControlWriteOutline(hOutfile, owner, tokens[LdpAceMail], CONTROL_AD_OWNER_KEYWORD);
+	else
+		bResult = ControlWriteOutline(hOutfile, owner, tokens[LdpAceDn], CONTROL_AD_OWNER_KEYWORD);
 	if (!bResult) {
 		LOG(Err, _T("Cannot write outline for <%s>"), tokens[LdpListDn]);
 	}
