@@ -152,7 +152,8 @@ This produces some `.csv` and `.log` files as follow:
 
         C:\> runas /netonly /user:DOM\username powershell.exe
 - `-sysvolPath` can be a network path (example `\\192.168.25.123\sysvol\domain.local\Policies`) or a path to a local robocopy of this folder. Defaults to `\\domainController\sysvol\domainDnsName\Policies`.
-- `-exchangeServer`, `-exchangeUser` and `-exchangePassword`: explicit authentication for EWS on a CAS Exchange server. Use an Exchange Trusted Subsystem member account, but NOT DA/EA/Org Mgmgt.
+- `-exchangeServer`, `-exchangeUser` and `-exchangePassword`: explicit authentication for EWS on a CAS Exchange server. 
+  Use an Exchange Trusted Subsystem member account with an active mailbox, but NOT DA/EA/Org Mgmgt because of some Deny ACEs.
   
 - `-logLevel`: change log and output verbosity (possible values are `ALL`, `DBG`, `INFO` (default), `WARN`, `ERR`, `SUCC` and `NONE`).
 - `-ldapOnly` and `-sysvolOnly`: dump only data from the LDAP directory (respectively from the SYSVOL).
@@ -194,6 +195,10 @@ You may need admin permissions to start/stop Neo4j.
   Headers-related errors will be raised and can be ignored. It is still a good idea to have a look at the bad.log file.
   Do not use the "admin-tool import" command, even though it is supposed to do the same thing. Parameters passing is currently bugged.
 		
+0. Restart the Neo4j server if it is stopped:
+```
+    .\bin\neo4j start
+    
 
 ## 5. QUERYING THE GRAPH DATABASE
 
