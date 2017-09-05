@@ -65,7 +65,6 @@ typedef enum _OBJ_CSV_TOKENS {
 typedef enum _ACE_CSV_TOKENS {
 	LdpAceDn = 0,
 	LdpAceSd = 1,
-	LdpAceMail = 2
 } OBJ_CSV_TOKENS;
 
 typedef enum _REL_CSV_TOKENS {
@@ -89,6 +88,11 @@ typedef struct _CACHE_OBJECT_BY_DN {
 	LPTSTR objectClass;
 } CACHE_OBJECT_BY_DN, *PCACHE_OBJECT_BY_DN;
 
+typedef struct _CACHE_MAIL_BY_DN {
+	LPTSTR dn;
+	LPTSTR mail;
+} CACHE_MAIL_BY_DN, *PCACHE_MAIL_BY_DN;
+
 typedef void (FN_USAGE_CALLBACK)(
 	_In_ PTCHAR progName
 	);
@@ -98,6 +102,7 @@ typedef void (FN_USAGE_CALLBACK)(
 DWORD gs_recordNumber;
 BOOL bCacheBuilt;
 PCACHE ppCache;
+PCACHE ppMbxCache;
 FN_USAGE_CALLBACK GenericUsage;
 
 

@@ -61,20 +61,16 @@ static void CallbackSdOwner(
 			&returned
 		);
 		if (!returned) {
-			LOG(Dbg, _T("cannot find object-by-sid entry for <%d>"), tokens[LdpListPrimaryGroupID]);
+			LOG(Dbg, _T("cannot find object-by-sid entry for SD owner of <%s>"), tokens[LdpAceDn]);
 			owner = searched.sid;
 		}
 		else {
 			owner = returned->dn;
 		}
 	}
-	// securable object can be ACE DN or his mailbox (email address)
-	if (!STR_EMPTY(tokens[LdpAceMail]))
-		bResult = ControlWriteOutline(hOutfile, owner, tokens[LdpAceMail], CONTROL_AD_OWNER_KEYWORD);
-	else
-		bResult = ControlWriteOutline(hOutfile, owner, tokens[LdpAceDn], CONTROL_AD_OWNER_KEYWORD);
+	bResult = ControlWriteOutline(hOutfile, owner, tokens[LdpAceDn], CONTROL_AD_OWNER_KEYWORD);
 	if (!bResult) {
-		LOG(Err, _T("Cannot write outline for <%s>"), tokens[LdpListDn]);
+		LOG(Err, _T("Cannot write outline for <%s>"), tokens[LdpAceDn]);
 	}
 	LocalFree(searched.sid);
 	free(pSd);
