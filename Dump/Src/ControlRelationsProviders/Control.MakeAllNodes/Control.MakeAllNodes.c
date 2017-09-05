@@ -22,6 +22,7 @@ static void CallbackBuildDnCache(
 ) {
 	BOOL bResult = FALSE;
 	CACHE_OBJECT_BY_DN cacheEntry = { 0 };
+	CACHE_OBJECT_BY_DN mailCacheEntry = { 0 };
 	PCACHE_OBJECT_BY_DN inserted = NULL;
 	BOOL newElement = FALSE;
 	LPTSTR objectClass = NULL;
@@ -60,6 +61,40 @@ static void CallbackBuildDnCache(
 		if (!bResult)
 			LOG(Err, _T("Cannot write outline for <%s>"), tokens[LdpListDn]);
 	}
+
+	// Writing Mail attributes as object of type email
+	if (STR_EMPTY(tokens[LdpListMail]))
+		return;
+
+	mailCacheEntry.dn = _tcsdup(tokens[LdpListMail]);
+	if (!mailCacheEntry.dn)
+		FATAL(_T("Could not dup dn <%s>"), tokens[LdpListMail]);
+
+	mailCacheEntry.objectClass = _tcsdup(_T("email"));
+	if (!mailCacheEntry.objectClass)
+		FATAL(_T("Could not dup objectClass <%s>"), _T("email"));
+
+	CacheEntryInsert(
+		ppCache,
+		(PVOID)&mailCacheEntry,
+		sizeof(CACHE_OBJECT_BY_DN),
+		&inserted,
+		&newElement
+	);
+	if (!inserted) {
+		LOG(Err, _T("cannot insert new object-by-dn cache entry <%s>"), tokens[LdpListMail]);
+	}
+	else if (!newElement) {
+		LOG(Dbg, _T("object-by-dn cache entry is not new <%s>"), tokens[LdpListMail]);
+		free(mailCacheEntry.dn);
+		free(mailCacheEntry.objectClass);
+	}
+	else {
+		bResult = ControlWriteOutline(hOutfile, tokens[LdpListMail], _T("email"), CONTROL_ALLNODES_KEYWORD);
+		if (!bResult)
+			LOG(Err, _T("Cannot write outline for <%s>"), tokens[LdpListMail]);
+	}
+
 }
 
 static void CallbackMakeAllNodes(
