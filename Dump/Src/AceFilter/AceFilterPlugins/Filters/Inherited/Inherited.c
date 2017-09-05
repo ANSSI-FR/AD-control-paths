@@ -99,10 +99,18 @@ BOOL PLUGIN_FILTER_FILTERACE(
 
 	//Version 2:
 	// Inherit-only means ACE does not apply to the current object. Else, return TRUE and let other filters deal with matching object classes.
+	// Also, Inherited ACE are not applied to objects with admincount set. 
+	// This can happen when getting admincount afterwards: inheritance is "disabled" but this does not remove ACEs from the SD.
 	if (gs_InhflagsOpt) {
 		return ((ace->imported.raw->AceFlags & gs_MaskFilter) == 0);
 	}
-	else {
-		return ((ace->imported.raw->AceFlags & INHERIT_ONLY_ACE) == 0);
+	if (ace->imported.raw->AceFlags & INHERIT_ONLY_ACE) {
+		return FALSE;
 	}
+	if (ace->imported.raw->AceFlags & INHERITED_ACE) {
+		PIMPORTED_OBJECT obj = api->Resolver.ResolverGetAceObject(ace);
+		if(obj && obj->imported.adminCount == 1)
+			return FALSE;
+	}
+	return TRUE;
 }
