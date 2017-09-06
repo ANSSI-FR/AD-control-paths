@@ -170,7 +170,7 @@ static void CallbackMbxOwner(
 	);
 	if (!returnedMbx) {
 		LOG(Dbg, _T("cannot find mail-by-dn entry for SD owner of <%s>"), tokens[LdpAceDn]);
-		owner = searched.dn;
+		mail = searchedMbx.dn;
 	}
 	else {
 		mail = returnedMbx->mail;
