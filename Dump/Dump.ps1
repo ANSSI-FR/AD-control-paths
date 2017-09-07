@@ -377,9 +377,9 @@ Execute-Cmd-Wrapper -cmd @"
 
 # OWNER MBX SD
 Execute-Cmd-Wrapper -cmd @"
-.\Bin\Control.Ad.Sd.exe
+.\Bin\Control.Mbx.Sd.exe
     -D '$logLevel'
-    -L '$outputDir\logs\$filesPrefix.control.ad.sd.log'
+    -L '$outputDir\logs\$filesPrefix.control.mbx.sd.log'
 	  -I '$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
   	-A '$outputDir\Ldap\$($filesPrefix)_LDAP_mbxsd.csv'
     -O '$outputDir\Relations\$filesPrefix.control.exch.mbxsd.csv'
