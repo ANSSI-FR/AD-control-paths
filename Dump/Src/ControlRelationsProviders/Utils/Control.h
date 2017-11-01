@@ -59,7 +59,12 @@ typedef enum _OBJ_CSV_TOKENS {
 	LdpListHomeMDB,
 	LdpListMsExchRoleEntries,
 	LdpListMsExchUserLink,
-	LdpListMsExchRoleLink
+	LdpListMsExchRoleLink,
+	LdpListUAC,
+	LdpListAllowedToDelegateTo,
+	LdpListAllowedToActOnBehalf,
+	LdpListSPN,
+	LdpListDnsHostName,
 } OBJ_CSV_TOKENS;
 
 typedef enum _ACE_CSV_TOKENS {
@@ -92,17 +97,28 @@ typedef struct _CACHE_MAIL_BY_DN {
 	LPTSTR dn;
 	LPTSTR mail;
 } CACHE_MAIL_BY_DN, *PCACHE_MAIL_BY_DN;
+	
+typedef struct _CACHE_OBJECT_BY_SPN {
+	LPTSTR spn;
+	LPTSTR dn;
+} CACHE_OBJECT_BY_SPN, *PCACHE_OBJECT_BY_SPN;
+
+typedef struct _CACHE_OBJECT_BY_DNSHOSTNAME {
+	LPTSTR dnshostname;
+	LPTSTR dn;
+} CACHE_OBJECT_BY_DNSHOSTNAME, *PCACHE_OBJECT_BY_DNSHOSTNAME;
 
 typedef void (FN_USAGE_CALLBACK)(
 	_In_ PTCHAR progName
 	);
-
 
 /* --- VARIABLES ------------------------------------------------------------ */
 DWORD gs_recordNumber;
 BOOL bCacheBuilt;
 PCACHE ppCache;
 PCACHE ppMbxCache;
+PCACHE ppSpnCache;
+PCACHE ppDnsCache;
 FN_USAGE_CALLBACK GenericUsage;
 
 

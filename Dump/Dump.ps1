@@ -327,6 +327,14 @@ Execute-Cmd-Wrapper -cmd @"
     -Y '$outputDir\Relations\$filesPrefix.control.ad.rodc.deny.csv'
 "@
 
+Execute-Cmd-Wrapper -cmd @"
+.\Bin\Control.Ad.Deleg.exe
+    -D '$logLevel'
+    -L '$outputDir\Logs\$filesPrefix.control.ad.deleg.log'
+	  -I '$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
+    -O '$outputDir\Relations\$filesPrefix.control.ad.deleg.csv'
+"@
+
 # Filter
 Execute-Cmd-Wrapper -cmd @"
 .\Bin\AceFilter.exe
