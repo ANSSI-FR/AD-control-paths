@@ -267,10 +267,15 @@ BOOL isObjectTypeClassMatching(
 		return FALSE;
 	//
 	// We have to check the objectType, to see if the ACE actually applies to this object.
-	// For this, we have to check if the objectType effectively represents a CLASS and then the right one.
-	// Note that OT checks the child class for create/delete child and the current class for every other right.
-	// Note that matching or non-matching inheritedObjectType ACEs apply to the current object whatever the class.
-	//
+	// For this, we have to check if the objectType effectively represents a CLASS and then one of the right ones.
+	// A few considerations regarding Object Type ACE:
+	// - The OT Guid should be an Extended Right if Mask 0x100 bit is set, a Property if 0x20 bit is set and a Class in other cases;
+	// - In non-consistent cases where those 3 situations are mixed, if the guid is of a Class; it is always evaluated, 
+	//whereas if it is of a Property or of an Extended right, the corresponding bit must be set in the Mask or the guid is ignored;
+	// - In case of mixing create/delete child and other bits in the Mask, the child is checked for create/delete child as per MSDN
+	//and the current object is checked for every other right;
+	// - Note that Object Type guid can match any class of the object to determine if ACE applies, whereas InheritedObjectType guid must match 
+	//the final one (ObjectCategory) to determine if inherit_only flag is unset.
 	PIMPORTED_OBJECT object = ResolverGetAceObject(ace);
 	GUID * objectType = GetObjectTypeAce(ace);
 	PIMPORTED_SCHEMA schemaObjectType = GetSchemaByGuid(objectType);

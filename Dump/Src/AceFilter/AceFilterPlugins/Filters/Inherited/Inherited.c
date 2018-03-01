@@ -82,8 +82,8 @@ BOOL PLUGIN_FILTER_FILTERACE(
     ) {
 	UNREFERENCED_PARAMETER(api);
 
-	//Note The definitive meaning of IOT is this one: when an ACE is inherited, if IOT does not match, the inherit-only flag is positioned.
-	// It means the ACE does not apply but is still inherited through the container hierarchy.
+	// InheritedObjectType: when an ACE is inherited, if IOT guid does not match the final Class (Object Category), the inherit_only flag is set.
+	// It means the ACE does not apply to the current object. It is still propagated as specified.
 
 	//Version 1:
 	// All inherited ACEs are filtered. We do this because we grant control on the original object independently of its class

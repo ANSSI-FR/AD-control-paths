@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.26730.12
+VisualStudioVersion = 15.0.27130.2020
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Control.Ad.Gplink", "Control.Ad.Gplink\Control.Ad.Gplink.vcxproj", "{F4CE2EF8-7DD5-40B4-8BE6-E59725E123A1}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -118,6 +118,12 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Control.Mbx.Sd", "Control.M
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Control.Ad.Deleg", "Control.Ad.Deleg\Control.Ad.Deleg.vcxproj", "{9A89168F-D903-4FC1-9950-B09DB82A06B5}"
+	ProjectSection(ProjectDependencies) = postProject
+		{ABC59760-7700-49F3-AC9E-A29414B1C5CE} = {ABC59760-7700-49F3-AC9E-A29414B1C5CE}
+		{1D4E068B-ACEE-4C7E-B361-4419377871C8} = {1D4E068B-ACEE-4C7E-B361-4419377871C8}
+		{DC24D7AB-6724-4932-A63E-586B5C5F80C5} = {DC24D7AB-6724-4932-A63E-586B5C5F80C5}
+		{181426AC-372D-40C3-86F9-554BE0F6F069} = {181426AC-372D-40C3-86F9-554BE0F6F069}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
