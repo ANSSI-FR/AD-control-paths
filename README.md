@@ -198,7 +198,7 @@ You may need admin permissions to start/stop Neo4j.
 0. Restart the Neo4j server if it is stopped:
 ```
     .\bin\neo4j start
-    
+````
 
 ## 5. QUERYING THE GRAPH DATABASE
 
