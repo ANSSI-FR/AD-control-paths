@@ -191,7 +191,7 @@ Do not use the "admin-tool import" command, even though it is supposed to do the
 0. Restart the Neo4j server if it is stopped:
 ```
     .\bin\neo4j start
-    
+````
 
 ## 5. QUERYING THE GRAPH DATABASE
 
