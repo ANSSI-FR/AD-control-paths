@@ -2,14 +2,14 @@
 ## "Who Can Read the CEO's Emails Edition"
 ![An example of control paths graph](graph-example.png "An example of control paths graph")
 
-Control paths in Active Directory are an aggregation of "control relations" between entities of the domain (users, computers, groups, GPO, containers, etc.)
-which can be visualized as graphs (such as above) and whose purpose is to answer questions like *"Who can get 'Domain Admins' privileges ?"* or *"What resources can a user control ?"* and even *"Who can read the CEO's emails ?"*.
+Control paths in Active Directory are an aggregation of "control relations" between entities of the domain (users, computers, groups, GPO, containers, etc.). 
+These relations can be visualized as graphs (such as above) to answer questions like *"Who can get 'Domain Admins' privileges ?"* or *"What resources can a user control ?"* and even *"Who can read the CEO's emails ?"*.
 
 ---
 ## CHANGES
-Pure Cypher querying through Neo4j REST API, increasing performance
-SCCM dumping utilities
-Kerberos delegation relations
+Basic Cypher querying through Neo4j REST API, increasing performance
+
+New control paths are added : Kerberos delegation, SCCM dumping utilities for local admins and sessions control paths
 
 Adding EXCHANGE permissions in v1.3 "Who Can Read the CEO's Emails Edition".
 Permissions extracted from AD Users, Mailbox/DB descriptors, RBAC and MAPI folders.
@@ -20,8 +20,6 @@ New control paths are added in v1.2.2: RoDC and LAPS.
 
 Major code changes take place in v1.2, as it is now able to dump and analyze very large Active Directories without hogging too much RAM.
 Some very large ADs with over 1M objects and 150M ACEs have been processed in a reasonable amount of time (a few hours on a laptop, consuming less than 1GB RAM).
-
-A few false positives were fixed and new control paths were added, so running it again on already tested ADs might be a good idea.
 
 
 ---
@@ -61,21 +59,20 @@ A few false positives were fixed and new control paths were added, so running it
 
 0. Install Neo4j: download the latest build of [neo4j community edition](https://neo4j.com/download/other-releases/) and extract the zip/tar archive (not the installer). **Do not start the Neo4j server before importing your data.**
 
-**Note:** Neo4j 3.2.0-alpha05 fixes an escape bug in CSV import that happens regularly with LDAP data.
-
 0. Install Neo4j service as admin: .\bin\neo4j.bat install-service -Verbose
 
 0. Modify Neo4j default configuration file: conf/neo4j.conf. Set the following:
-		
-- dbms.active_database=adcp.db
-- cypher.forbid_shortestpath_common_nodes=false
-		
+```	
+    dbms.active_database=adcp.db
+    cypher.forbid_shortestpath_common_nodes=false
+```
 0. Start the Neo4j server:
-
-        .\bin\neo4j start -Verbose
+```
+    .\bin\neo4j start -Verbose
+```
 
 0. Change the default password for the Neo4j REST interface. Navigate to `http://localhost:7474` (the web interface should be running). 
-   Enter the default username and password (`neo4j` for both), then enter `secret` as your new password (Hardcoded in the Query script, can be changed with the `--password` flag).
+   Enter the default username and password (`neo4j` for both), then enter `secret` as your new password (Default in the Query script, can be changed with -neo4jPassword).
    By default, Neo4j only listens to local connections.
 
 
@@ -86,7 +83,7 @@ A few false positives were fixed and new control paths were added, so running it
 
 Generating control paths graphs for your domain takes the 4 following steps:
 
-0. **Dump** data from LDAP directory, SYSVOL and EWS and run analyzers to form control relationships.
+0. **Dump** data from LDAP directory, SYSVOL, SCCM and EWS and run analyzers to form control relationships.
 0. **Import** these relations into a graph-oriented database (Neo4j).
 0. **Query** that database to export various nodes lists, control paths, or **create JSON files** representing control paths graphs.
 0. **Visualize** graphs created from those JSON files.
