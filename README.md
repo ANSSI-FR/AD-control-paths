@@ -47,7 +47,7 @@ Some very large ADs with over 1M objects and 150M ACEs have been processed in a 
 - **Import**, **Query** and **Visualize** steps can run on the same machine or on anything supporting Neo4j, Java and Ruby. They have been tested on Windows and Linux.
 
 ### Building
-
+ - Clone this repository with all submodules
  - Build the 3 solutions in the subfolders of /Dump/Src/ with an up-to-date Visual Studio (Community version works). Targets must be:
    - Release/x64 for AceFilter
    - Release/x64 for ControlRelationProviders
@@ -187,6 +187,7 @@ You may need admin permissions to start/stop Neo4j.
 0. Restart the Neo4j server if it is stopped:
 ```
     .\bin\neo4j start
+```
     
 
 ## 5. QUERYING THE GRAPH DATABASE
@@ -194,27 +195,28 @@ You may need admin permissions to start/stop Neo4j.
 The `Query/Query.ps1` script is used to query the created Neo4j database.
 	
 ### Basic query to get a graph and paths of all nodes able to take control of the "Domain Admins" group:
-
+```
     .\Query.ps1 -quick
-	  
+```    
    
 ### To search for a node from its DN or an email address and get a graph to it (useful if AD is not in English):
-
+```
     .\Query.ps1 -search "cn=administrateurs,"
-    
+```
+``` 
     .\Query.ps1 -search "ceo@domain.local"
-    
+``` 
   (This will return a node id number)
-  
+```  
     .\Query.ps1 -graph <node id number> -outFile <JSON filename>
-    
+```    
   (This produces a json graph file, which you can visualize, see part 6)
 
   
 ### Progressively increase the ShortestPath algorithm Depth parameter as you visualize and adjust the graph
-
+```
     .\Query.ps1 -graph <node id number> -maxDepth 15 -outFile <JSON filename>
-    
+```    
     
     
 ## 6. VISUALIZE GRAPHS
@@ -231,7 +233,6 @@ For better visibility, you might want to:
 - setup hierarchical viewing with the menu on the left, especially for email nodes as this will flatten Exchange RBAC nodes
 - disable physics if the graph does not stabilize
 - remove unwanted relationships or nodes with right click -> "Cypher delete to clipboard" and paste into http://localhost:7474 then relaunch the query.
-
 
 
 
