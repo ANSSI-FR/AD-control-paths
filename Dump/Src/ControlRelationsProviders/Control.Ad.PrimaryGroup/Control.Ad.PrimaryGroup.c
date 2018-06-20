@@ -133,7 +133,7 @@ int _tmain(
 	CacheCreate(
 		&ppCache,
 		ptName,
-		pfnCompareRid
+		(PRTL_AVL_COMPARE_ROUTINE)pfnCompareRid
 	);
 
 	bCacheBuilt = FALSE;

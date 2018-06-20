@@ -84,7 +84,7 @@ int _tmain(
 	CacheCreate(
 		&ppCache,
 		ptName,
-		pfnCompare
+		(PRTL_AVL_COMPARE_ROUTINE)pfnCompare
 	);
 
 	bCacheBuilt = FALSE;
