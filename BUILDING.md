@@ -9,12 +9,12 @@
 
 ## Build AD-Control-Paths
 ### Automatic
-1. Get all submodules (`git submodule update --init --update`)
+1. Get all submodules (`git submodule update --init --recursive`)
 2. Open a Visual Studio Command Prompt (x64 Native)
 3. Run build.bat (+ Grab coffee)
 
 ### Manual
-1. Get all submodules (`git submodule update --init --update`)
+1. Get all submodules (`git submodule update --init --recursive`)
 2. Build ADCP-libdev or get binary release
 3. Put ADCP-libdev dist folders (`Include`, `Debug`, `Release`, `x64`) to `Dump\Src\DirectoryCrawler\libdev`, `Dump\Src\AceFilter\libdev` and `Dump\Src\ControlRelationsProviders\libdev`.
 4. Build DirectoryCrawler (or get binary release)
