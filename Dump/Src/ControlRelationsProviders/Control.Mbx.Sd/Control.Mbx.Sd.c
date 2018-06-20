@@ -194,6 +194,15 @@ int _tmain(
 	PTCHAR ptNameSid = _T("SIDCACHE");
 	PTCHAR ptNameMbx = _T("MBXCACHE");
 	bCacheBuilt = FALSE;
+	//
+	// Init
+	//
+	//WPP_INIT_TRACING();
+	UtilsLibInit();
+	CacheLibInit();
+	CsvLibInit();
+	LogLibInit();
+
 	CacheCreate(
 		&ppCache,
 		ptNameSid,
@@ -209,5 +218,13 @@ int _tmain(
 	bCacheBuilt = TRUE;
 	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackMbxOwner, GenericUsage);
 
+	//
+	// Cleanup
+	//
+	//WPP_CLEANUP();
+	UtilsLibCleanup();
+	CacheLibCleanup();
+	CsvLibCleanup();
+	LogLibCleanup();
 	return EXIT_SUCCESS;
 }

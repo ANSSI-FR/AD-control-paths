@@ -383,6 +383,15 @@ int _tmain(
     DWORD i = 0;
 	HANDLE processHeap = NULL;
 
+	//
+	// Init
+	//
+	//WPP_INIT_TRACING();
+	UtilsLibInit();
+	CacheLibInit();
+	CsvLibInit();
+	LogLibInit();
+
 	LOG(Succ, _T("Starting"));
 	processHeap = GetProcessHeap();
     //
@@ -565,5 +574,14 @@ int _tmain(
     // End
     //
     LOG(Succ, _T("Done"));
+
+	//
+	// Cleanup
+	//
+	//WPP_CLEANUP();
+	UtilsLibCleanup();
+	CacheLibCleanup();
+	CsvLibCleanup();
+	LogLibCleanup();
     return EXIT_SUCCESS;
 }

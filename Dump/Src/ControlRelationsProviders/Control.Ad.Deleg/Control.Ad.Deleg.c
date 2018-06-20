@@ -270,6 +270,14 @@ int _tmain(
 	PTCHAR ptNameSid = _T("SIDCACHE");
 	PTCHAR ptNameSpn = _T("SPNCACHE");
 	PTCHAR ptNameDns = _T("DNSCACHE");
+	//
+	// Init
+	//
+	//WPP_INIT_TRACING();
+	UtilsLibInit();
+	CacheLibInit();
+	CsvLibInit();
+	LogLibInit();
 
 	CacheCreate(
 		&ppCache,
@@ -291,5 +299,13 @@ int _tmain(
 	bCacheBuilt = TRUE;
 	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackKrbDeleg, GenericUsage);
 
+	//
+	// Cleanup
+	//
+	//WPP_CLEANUP();
+	UtilsLibCleanup();
+	CacheLibCleanup();
+	CsvLibCleanup();
+	LogLibCleanup();
 	return EXIT_SUCCESS;
 }
