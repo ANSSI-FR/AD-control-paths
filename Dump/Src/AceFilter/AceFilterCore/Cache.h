@@ -7,7 +7,7 @@
 /* --- INCLUDES ------------------------------------------------------------- */
 #include "Common.h"
 #include "ImportedObjects.h"
-#include "..\libdev\LibCache\src\CacheLib.h"
+#include "CacheLib.h"
 
 
 /* --- DEFINES -------------------------------------------------------------- */

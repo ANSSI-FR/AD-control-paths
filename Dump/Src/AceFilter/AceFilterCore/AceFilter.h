@@ -5,7 +5,7 @@
 #define __ACE_FILTER_H__
 
 #define UTILS_REQUIRE_GETOPT_COMPLEX
-
+#define STATIC_GETOPT
 
 /* --- INCLUDES ------------------------------------------------------------- */
 #include "Common.h"
