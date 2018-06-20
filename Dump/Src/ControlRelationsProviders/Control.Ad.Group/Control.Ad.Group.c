@@ -50,6 +50,24 @@ int _tmain(
 ) {
 	PTCHAR outfileHeader[OUTFILE_TOKEN_COUNT] = CONTROL_OUTFILE_HEADER;
 	bCacheBuilt = FALSE;
+	//
+	// Init
+	//
+	//WPP_INIT_TRACING();
+	UtilsLibInit();
+	CacheLibInit();
+	CsvLibInit();
+	LogLibInit();
+
 	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackGroupMember, GenericUsage);
+
+	//
+	// Cleanup
+	//
+	//WPP_CLEANUP();
+	UtilsLibCleanup();
+	CacheLibCleanup();
+	CsvLibCleanup();
+	LogLibCleanup();
 	return EXIT_SUCCESS;
 }

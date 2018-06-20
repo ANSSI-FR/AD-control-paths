@@ -129,11 +129,19 @@ int _tmain(
 ) {
 	PTCHAR outfileHeader[OUTFILE_TOKEN_COUNT] = CONTROL_OUTFILE_HEADER;
 	PTCHAR ptName = _T("RIDCACHE");
+	//
+	// Init
+	//
+	//WPP_INIT_TRACING();
+	UtilsLibInit();
+	CacheLibInit();
+	CsvLibInit();
+	LogLibInit();
 
 	CacheCreate(
 		&ppCache,
 		ptName,
-		pfnCompareRid
+		(PRTL_AVL_COMPARE_ROUTINE)pfnCompareRid
 	);
 
 	bCacheBuilt = FALSE;
@@ -141,5 +149,13 @@ int _tmain(
 	bCacheBuilt = TRUE;
 	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackPrimaryGroup, GenericUsage);
 
+	//
+	// Cleanup
+	//
+	//WPP_CLEANUP();
+	UtilsLibCleanup();
+	CacheLibCleanup();
+	CsvLibCleanup();
+	LogLibCleanup();
 	return EXIT_SUCCESS;
 }

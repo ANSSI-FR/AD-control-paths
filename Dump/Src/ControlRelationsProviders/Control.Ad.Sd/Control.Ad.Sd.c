@@ -87,15 +87,32 @@ int _tmain(
 	PTCHAR outfileHeader[OUTFILE_TOKEN_COUNT] = CONTROL_OUTFILE_HEADER;
 	PTCHAR ptName = _T("SIDCACHE");
 	bCacheBuilt = FALSE;
+	//
+	// Init
+	//
+	//WPP_INIT_TRACING();
+	UtilsLibInit();
+	CacheLibInit();
+	CsvLibInit();
+	LogLibInit();
+
 	CacheCreate(
 		&ppCache,
 		ptName,
-		pfnCompare
+		(PRTL_AVL_COMPARE_ROUTINE)pfnCompare
 	);
 	bCacheBuilt = FALSE;
 	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackBuildSidCache, GenericUsage);
 	bCacheBuilt = TRUE;
 	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackSdOwner, GenericUsage);
 
+	//
+	// Cleanup
+	//
+	//WPP_CLEANUP();
+	UtilsLibCleanup();
+	CacheLibCleanup();
+	CsvLibCleanup();
+	LogLibCleanup();
 	return EXIT_SUCCESS;
 }

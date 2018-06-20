@@ -219,6 +219,14 @@ int _tmain(
 ) {
 	PTCHAR outfileHeader[OUTFILE_TOKEN_COUNT] = CONTROL_OUTFILE_HEADER;
 	bCacheBuilt = FALSE;
+	//
+	// Init
+	//
+	//WPP_INIT_TRACING();
+	UtilsLibInit();
+	CacheLibInit();
+	CsvLibInit();
+	LogLibInit();
 
 	RtlZeroMemory(&sSysvolOptions, sizeof(SYSVOL_OPTIONS));
 	SysvolParseOptions(&sSysvolOptions, argc, argv);
@@ -229,10 +237,18 @@ int _tmain(
 	CacheCreate(
 		&ppCache,
 		ptName,
-		pfnCompare
+		(PRTL_AVL_COMPARE_ROUTINE)pfnCompare
 	);
 	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackBuildSidCache, SysvolUsage);
 	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackLdapGpoOwner, SysvolUsage);
 
+	//
+	// Cleanup
+	//
+	//WPP_CLEANUP();
+	UtilsLibCleanup();
+	CacheLibCleanup();
+	CsvLibCleanup();
+	LogLibCleanup();
 	return EXIT_SUCCESS;
 }

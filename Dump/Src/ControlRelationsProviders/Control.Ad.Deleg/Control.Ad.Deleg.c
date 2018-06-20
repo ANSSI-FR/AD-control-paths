@@ -270,26 +270,42 @@ int _tmain(
 	PTCHAR ptNameSid = _T("SIDCACHE");
 	PTCHAR ptNameSpn = _T("SPNCACHE");
 	PTCHAR ptNameDns = _T("DNSCACHE");
+	//
+	// Init
+	//
+	//WPP_INIT_TRACING();
+	UtilsLibInit();
+	CacheLibInit();
+	CsvLibInit();
+	LogLibInit();
 
 	CacheCreate(
 		&ppCache,
 		ptNameSid,
-		pfnCompare
+		(PRTL_AVL_COMPARE_ROUTINE)pfnCompare
 	);
 	CacheCreate(
 		&ppSpnCache,
 		ptNameSpn,
-		pfnCompare
+		(PRTL_AVL_COMPARE_ROUTINE)pfnCompare
 	);
 	CacheCreate(
 		&ppDnsCache,
 		ptNameDns,
-		pfnCompare
+		(PRTL_AVL_COMPARE_ROUTINE)pfnCompare
 	);
 	bCacheBuilt = FALSE;
 	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackBuildCaches, GenericUsage);
 	bCacheBuilt = TRUE;
 	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackKrbDeleg, GenericUsage);
 
+	//
+	// Cleanup
+	//
+	//WPP_CLEANUP();
+	UtilsLibCleanup();
+	CacheLibCleanup();
+	CsvLibCleanup();
+	LogLibCleanup();
 	return EXIT_SUCCESS;
 }

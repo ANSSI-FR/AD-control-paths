@@ -194,20 +194,37 @@ int _tmain(
 	PTCHAR ptNameSid = _T("SIDCACHE");
 	PTCHAR ptNameMbx = _T("MBXCACHE");
 	bCacheBuilt = FALSE;
+	//
+	// Init
+	//
+	//WPP_INIT_TRACING();
+	UtilsLibInit();
+	CacheLibInit();
+	CsvLibInit();
+	LogLibInit();
+
 	CacheCreate(
 		&ppCache,
 		ptNameSid,
-		pfnCompare
+		(PRTL_AVL_COMPARE_ROUTINE)pfnCompare
 	);
 	CacheCreate(
 		&ppMbxCache,
 		ptNameMbx,
-		pfnCompare
+		(PRTL_AVL_COMPARE_ROUTINE)pfnCompare
 	);
 	bCacheBuilt = FALSE;
 	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackBuildCaches, GenericUsage);
 	bCacheBuilt = TRUE;
 	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackMbxOwner, GenericUsage);
 
+	//
+	// Cleanup
+	//
+	//WPP_CLEANUP();
+	UtilsLibCleanup();
+	CacheLibCleanup();
+	CsvLibCleanup();
+	LogLibCleanup();
 	return EXIT_SUCCESS;
 }
