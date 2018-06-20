@@ -13,9 +13,9 @@
 #include <Strsafe.h>
 #include <Aclapi.h>
 
-#include "..\libdev\LibUtils\src\UtilsLib.h"
-#include "..\libdev\LibLog\src\LogLib.h"
-#include "..\libdev\LibCsv\src\CsvLib.h"
+#include "UtilsLib.h"
+#include "LogLib.h"
+#include "CsvLib.h"
 
 
 #endif // __COMMON_H__

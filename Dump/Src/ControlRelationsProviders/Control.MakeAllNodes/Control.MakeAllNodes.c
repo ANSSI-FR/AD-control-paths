@@ -156,7 +156,7 @@ int _tmain(
 	CacheCreate(
 		&ppCache,
 		ptName,
-		pfnCompareDn
+		(PRTL_AVL_COMPARE_ROUTINE)pfnCompareDn
 	);
 	bCacheBuilt = FALSE;
 	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackBuildDnCache, GenericUsage);

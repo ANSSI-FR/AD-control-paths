@@ -36,7 +36,7 @@ static FARPROC PluginResolve(
 
 	// TODO
 	processHeap = GetProcessHeap();
-	UtilsHeapAllocAStrAndConvertWStr((PUTILS_HEAP)&processHeap, procName, &procNameA);
+	UtilsHeapAllocAStrAndConvertWStr((PUTILS_HEAP)&processHeap, (LPWSTR)procName, &procNameA);
     proc = GetProcAddress(plugin->module, procNameA);
     if (!proc && fatal) {
         FATAL(_T("Failed to resolve required symbol <%s> for plugin <%s>"), procName, PLUGIN_GET_NAME(plugin));

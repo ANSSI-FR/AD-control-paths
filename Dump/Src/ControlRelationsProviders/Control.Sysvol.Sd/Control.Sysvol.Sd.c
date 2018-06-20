@@ -229,7 +229,7 @@ int _tmain(
 	CacheCreate(
 		&ppCache,
 		ptName,
-		pfnCompare
+		(PRTL_AVL_COMPARE_ROUTINE)pfnCompare
 	);
 	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackBuildSidCache, SysvolUsage);
 	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackLdapGpoOwner, SysvolUsage);

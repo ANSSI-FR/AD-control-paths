@@ -2,6 +2,7 @@
 #define __CONTROL_H__
 
 #define UTILS_REQUIRE_GETOPT_COMPLEX
+#define STATIC_GETOPT
 
 /* --- INCLUDES ------------------------------------------------------------- */
 #include <Windows.h>
@@ -13,10 +14,10 @@
 #include <io.h>
 #include <fcntl.h>
 
-#include "..\libdev\LibUtils\src\UtilsLib.h"
-#include "..\libdev\LibCache\src\CacheLib.h"
-#include "..\libdev\LibCsv\src\CsvLib.h"
-#include "..\libdev\LibLog\src\LogLib.h"
+#include "UtilsLib.h"
+#include "CacheLib.h"
+#include "CsvLib.h"
+#include "LogLib.h"
 
 
 /* --- DEFINES -------------------------------------------------------------- */

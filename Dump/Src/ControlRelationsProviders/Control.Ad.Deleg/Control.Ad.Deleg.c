@@ -274,17 +274,17 @@ int _tmain(
 	CacheCreate(
 		&ppCache,
 		ptNameSid,
-		pfnCompare
+		(PRTL_AVL_COMPARE_ROUTINE)pfnCompare
 	);
 	CacheCreate(
 		&ppSpnCache,
 		ptNameSpn,
-		pfnCompare
+		(PRTL_AVL_COMPARE_ROUTINE)pfnCompare
 	);
 	CacheCreate(
 		&ppDnsCache,
 		ptNameDns,
-		pfnCompare
+		(PRTL_AVL_COMPARE_ROUTINE)pfnCompare
 	);
 	bCacheBuilt = FALSE;
 	ControlMainForeachCsvResult(argc, argv, outfileHeader, CallbackBuildCaches, GenericUsage);
