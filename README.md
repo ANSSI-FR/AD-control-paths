@@ -47,11 +47,8 @@ Some very large ADs with over 1M objects and 150M ACEs have been processed in a 
 - **Import**, **Query** and **Visualize** steps can run on the same machine or on anything supporting Neo4j, Java and Ruby. They have been tested on Windows and Linux.
 
 ### Building
- - Clone this repository with all submodules
- - Build the 3 solutions in the subfolders of /Dump/Src/ with an up-to-date Visual Studio (Community version works). Targets must be:
-   - Release/x64 for AceFilter
-   - Release/x64 for ControlRelationProviders
-   - RelADCP/x64 for DirectoryCrawler.
+
+Building is documented in the BULDING.md file. You can safely choose to build Release/x64 targets only.
 
 ### Prerequisites
 
@@ -75,6 +72,7 @@ Some very large ADs with over 1M objects and 150M ACEs have been processed in a 
    Enter the default username and password (`neo4j` for both), then enter `secret` as your new password (Default in the Query script, can be changed with -neo4jPassword).
    By default, Neo4j only listens to local connections.
 
+0. Install EWS Managed API (if dumping Exchange permissions) from https://go.microsoft.com/fwlink/?LinkId=255472
 
 
 ## 2. USAGE CONTEXT
@@ -239,8 +237,11 @@ For better visibility, you might want to:
 ## 7. AUTHORS
 
 Geraud de Drouas - 2018
+
 Geraud de Drouas - ANSSI - 2015-2017
 
 Lucas Bouillot, Emmanuel Gras - ANSSI - 2014
+
 Presented at the French conference SSTIC-2014. Slides and paper can be found here:
+
 [https://www.sstic.org/2014/presentation/chemins\_de\_controle\_active\_directory/](https://www.sstic.org/2014/presentation/chemins_de_controle_active_directory/).
