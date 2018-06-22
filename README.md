@@ -22,7 +22,7 @@ A few false positives were fixed and new control paths were added, so running it
 
 ---
 ## QUICK START
-- Download and extract the latest binary release from the Github Releases tab on a Windows machine with Java.
+- Download and extract the latest binary release from the Github Releases tab on a Windows machine.
 - Skip to part 3 (Dump step)
 
 ---
@@ -45,33 +45,13 @@ A few false positives were fixed and new control paths were added, so running it
 
 ### Building
 
- - Build the 3 solutions in the subfolders of /Dump/Src/ with an up-to-date Visual Studio (Community version works). Targets must be:
-   - Release/x64 for AceFilter
-   - Release/x64 for ControlRelationProviders
-   - RelADCP/x64 for DirectoryCrawler.
+ - Follow the instructions in BUILDING.md.
 
 ### Prerequisites
 
-0. Install a Java JRE from https://java.com/en/download/manual.jsp or from your distribution.
+0. Download Zulu JDK 8 (https://cdn.azul.com/zulu/bin/zulu8.28.0.1-jdk8.0.163-win_x64.zip) and put the zip in `Dump/ADCP`
 
-0. Install Neo4j: download the latest build of [neo4j community edition](https://neo4j.com/download/other-releases/) and extract the zip/tar archive (not the installer). **Do not start the Neo4j server before importing your data.**
-
-**Note:** Neo4j 3.2.0-alpha05 fixes an escape bug in CSV import that happens regularly with LDAP data.
-
-0. Install Neo4j service as admin: .\bin\neo4j.bat install-service -Verbose
-
-0. Modify Neo4j default configuration file: conf/neo4j.conf. Set the following:
-
-- dbms.active_database=adcp.db
-- cypher.forbid_shortestpath_common_nodes=false
-
-0. Start the Neo4j server:
-
-        .\bin\neo4j start -Verbose
-
-0. Change the default password for the Neo4j REST interface. Navigate to `http://localhost:7474` (the web interface should be running). 
-   Enter the default username and password (`neo4j` for both), then enter `secret` as your new password (Hardcoded in the Query script, can be changed with the `--password` flag).
-   By default, Neo4j only listens to local connections.
+0. Download Neo4j 3.4.0 (https://neo4j.com/artifact.php?name=neo4j-community-3.4.0-windows.zip) and put the zip in `Dump/ADCP`
 
 0. Install Ruby from https://rubyinstaller.org/downloads/ or from your distribution. A 64 bits version is recommended.
 
@@ -91,7 +71,8 @@ A few false positives were fixed and new control paths were added, so running it
 
 Generating control paths graphs for your domain takes the 4 following steps:
 
-0. **Dump** data from LDAP directory, SYSVOL and EWS and run analyzers to form control relationships.
+0. **Dump** data from LDAP directory, SYSVOL and EWS.
+0. **Prepare**  run analyzers to form control relationships.
 0. **Import** these relations into a graph-oriented database (Neo4j).
 0. **Query** that database to export various nodes lists, control paths, or **create JSON files** representing control paths graphs.
 0. **Visualize** graphs created from those JSON files.
@@ -122,13 +103,14 @@ If no access to the domain is given, control graphs can be realized from offline
 
 ## 3. DUMP DATA INTO CSV FILES
 
-Use the powershell script `Dump\Dump.ps1` to dump data from the LDAP directory and SYSVOL.
+Use the powershell module in `Dump`. You must be in the `Dump` folder (important).
 The simplest example is:
 
-    .\Dump.ps1
-      -outputDir        <output directory>
-      -domainController <DC ip or host>
-      -domainDnsName    <domain FQDN>
+    Import-Module .\ADCP
+    Get-ADCPDump
+        -outputDir        <output directory>
+        -domainController <DC ip or host>
+        -domainDnsName    <domain FQDN>
 
 - `-domainController` can be an real domain controller, or a machine exposing the LDAP directory from a re-mounted `ntds.dit` using `dsamain`.
 
@@ -139,34 +121,51 @@ This produces some `.csv` and `.log` files as follow:
         |- yyyymmdd_domainfqdn\Ldap\*.csv                                    # Unfiltered dumped information
         \- yyyymmdd_domainfqdn\Relations\*.csv                               # "Control relations" files, which will be imported into the graph database
         
+
 ### Other options
 
-- `-help`: show usage.
-- `-user` and `-password`: use explicit authentication (by default implicit authentication is used). The username can be specified in the form `DOMAIN\username`, which can be useful to dump a remote domain accessible through a trust.
-    If you don't want your password to appear in the command line but still use explicit authentication use the following `runas` command, then launch the `Dump.ps1` script without `-user` and `-password` options:
+- `-Credential` : use explicit authentication (by default implicit authentication is used). `Credential` is a Powershell credential object, use `Get-Credential` to built it .
+    If you don't want your password to appear in the command line but still use explicit authentication use the following `runas` command, then use the module without `-Credential` option:
 
         C:\> runas /netonly /user:DOM\username powershell.exe
 - `-sysvolPath` can be a network path (example `\\192.168.25.123\sysvol\domain.local\Policies`) or a path to a local robocopy of this folder. Defaults to `\\domainController\sysvol\domainDnsName\Policies`.
-- `-exchangeServer`, `-exchangeUser` and `-exchangePassword`: explicit authentication for EWS on a CAS Exchange server. 
+- `-exchangeServer`, `-ExchangeCredential`: explicit authentication for EWS on a CAS Exchange server. 
   Use an Exchange Trusted Subsystem member account with an active mailbox, but NOT DA/EA/Org Mgmgt because of some Deny ACEs.
   
 - `-logLevel`: change log and output verbosity (possible values are `ALL`, `DBG`, `INFO` (default), `WARN`, `ERR`, `SUCC` and `NONE`).
 - `-ldapOnly` and `-sysvolOnly`: dump only data from the LDAP directory (respectively from the SYSVOL).
 - `-ldapPort`: change ldap port (default is `389`). This can be useful for a copied `ntds.dit` re-mounted with `dsamain` since it allows you to use a non standard ldap port.
 - `-useBackupPriv`: use backup privilege to access `-sysvolPath`, which is needed when using a robocopy. You must use an administrator account to use this option.
-- `-generateCmdOnly`: generate the list of commands to use to dump the data, instead of executing these commands. This can be useful on systems where the powershell's execution-policy doesn't allow unsigned scripts to be executed, or on which powershell is not installed in a tested version (v2.0 and later).
-- `-fromExistingDumps`: skip the LDAP request step and work from files found in the Ldap\ folder.
-- `-resume`: look for the first non-successful command in the same-day, same-target folder and resume from there. Can be used to resume if your connection to the DC went down.
 - `-forceOverwrite`: overwrite any previous dump files from the same-day, same-target folder
 
 **Warning:** Accessing the Sysvol share from a non-domain machine can be blocked by UNC Paths hardening, which is a client-side parameter enabled by default since Windows 10. Disable it like this:
 Set-ItemProperty -Path HKLM:\Software\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths -Name "\\*\SYSVOL" -Value "RequireMutualAuthentication=0"
 
-## 4. IMPORT CSV FILES INTO A GRAPH DATABASE
+** Note:** The only binary needed in this step is `DirectoryCrawler.exe`.
 
-You can now import the Relations CSV files along with the AD objects into your Neo4j graph database. This step can be done fully offline.
-You may need admin permissions to start/stop Neo4j.
+## 4. PREPARE THE DATA
+This action can be performed offline.
 
+To computer relations, use the ADCP module (like in 3.)
+
+    Import-Module .\ADCP
+    Prepare-ADCPDump
+        -inputDir         <input directory>
+        -domainDnsName    <domain FQDN>
+
+
+## 5. IMPORT CSV FILES INTO A GRAPH DATABASE
+
+You can now import the Relations CSV files along with the AD objects into your Neo4j graph database. This step can be done fully offline. Use the ADCP module:
+
+    Import-Module .\ADCP
+    $instance = Import-ADCPDump
+        -inputDir         <input directory>
+        -domainDnsName    <domain FQDN>
+    # Launch Neo4J
+    $instance | Start-ADCPInstance
+
+To perform these step manually (or in Linux):
 0. Stop the Neo4j server if it is started:
 ```
     .\bin\neo4j stop
@@ -193,7 +192,20 @@ Do not use the "admin-tool import" command, even though it is supposed to do the
     .\bin\neo4j start
 ````
 
-## 5. QUERYING THE GRAPH DATABASE
+
+
+**Note:** All the previous steps (2, 3, 4) can be piped in Powershell:
+
+    Import-Module .\ADCP
+    Get-ADCPDump
+        -outputDir        <output directory>
+        -domainController <DC ip or host>
+        -domainDnsName    <domain FQDN> |
+    Prepare-ADCPDump |
+    Import-ADCPDump |
+    Start-ADCPInstance
+
+## 6. QUERYING THE GRAPH DATABASE
 
 The `Query/query.rb` script (compiled as an exe in the release) is used to query the created Neo4j database.
 
@@ -241,7 +253,7 @@ The default output directory is `out` and contains the following generated files
 The default targets are searched with their English DN. You can choose another
 language with the `--lang` option. For now, only `en` and `fr` are supported in automatic mode.
 
-## 6. VISUALIZE GRAPHS
+## 7. VISUALIZE GRAPHS
 
 ADCP uses the [OVALI](https://github.com/ANSSI-FR/OVALI) frontend to display
 JSON data files as graphs.
@@ -252,7 +264,7 @@ Open one of the generated json files.
 
 For better visibility, you might want to right click -> cluster some similar nodes and to setup hierarchical viewing with the menu on the left.
 
-## 7. OTHER QUERYING EXAMPLES
+## 8. OTHER QUERYING EXAMPLES
 
 The `Query/query.rb` program can also search paths for non-predefined targets, as illustrated in the following examples:
 
@@ -347,9 +359,11 @@ queries. You can limit the maximum search depth with the `--maxdepth` option.
 
 0. See `./query.rb --help` for a full list of possible options.
 
-## 8. AUTHORS
+## 9. AUTHORS
 
-Geraud de Drouas - ANSSI - 2015-2017
+Jean-Baptiste Galet - ANSSI - 2017-2018
+
+Geraud de Drouas - ANSSI - 2015-2018
 
 Lucas Bouillot, Emmanuel Gras - ANSSI - 2014
 Presented at the French conference SSTIC-2014. Slides and paper can be found here:
