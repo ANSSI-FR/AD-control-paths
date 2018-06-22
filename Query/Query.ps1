@@ -95,7 +95,14 @@ $Headers = @{"Accept"="application/json; charset=UTF-8";"Content-Type"="applicat
 
 # Cypher search mode
 If( $PSBoundParameters.ContainsKey('search') -or $PSBoundParameters.ContainsKey('quick') ) {
-  $Body='{"statements":[{"statement" : "match(n) WHERE n.name STARTS WITH $searchedName WITH {id:ID(n),name:n.name} AS principal RETURN principal","parameters" : {"searchedName" : "'+$search+'"} }]}'
+  $Body = @" 
+{"statements":[{"statement" : "
+MATCH(n) 
+WHERE n.name STARTS WITH `$searchedName 
+WITH {id:ID(n),name:n.name} AS principal 
+RETURN principal
+","parameters" : {"searchedName" : "$search"} }]}
+"@ -replace "`r`n"
   $found = Execute-Invoke-RestMethod -Method Post  -Uri $Uri -Credential $Cred -Headers $Headers  -Body $Body
   $found
 }
@@ -112,13 +119,14 @@ If( $PSBoundParameters.ContainsKey('quick') ) {
 If( $PSBoundParameters.ContainsKey('graph') -or $PSBoundParameters.ContainsKey('quick') ) {
 # Only include RBAC relations if node type is email
   Write-Output "[*]Querying for type of node $graph"
-  $Body = @"
-{"statements":[{"statement" : "
+  $Body = @" 
+{"statements":[{"statement" : " 
 MATCH (n) 
 WHERE id(n)=`$graphedNode 
-RETURN labels(n)[0]
+RETURN labels(n)[0] 
 ","parameters" : {"graphedNode" : $graph} , "resultDataContents" : ["row"] }]} 
-"@ -replace "`n"
+"@ -replace "`r`n"
+
   $type = Execute-Invoke-RestMethod -Method Post  -Uri $Uri -Credential $Cred -Headers $Headers  -Body $Body
   Write-Output "[*]Node $graph type is: $type"
   $queryMail = [bool]($type -like "email" )
@@ -164,7 +172,7 @@ nodes: orig_node + COLLECT(distinct all_nodes),
 links: COLLECT(all_links)
 }",
 "parameters" : {"graphedNode" : $graph} , "resultDataContents" : ["row"] }]}
-"@ -replace "`n"
+"@ -replace "`r`n"
 $graphResult = Execute-Invoke-RestMethod -Method Post  -Uri $Uri -Credential $Cred -Headers $Headers  -Body $Body
 If ( $PSBoundParameters.ContainsKey('console') ) {
   $graphResult[0] | ConvertTo-Json -depth 100 
