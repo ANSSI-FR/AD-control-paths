@@ -49,9 +49,9 @@ A few false positives were fixed and new control paths were added, so running it
 
 ### Prerequisites
 
-0. Download Zulu JDK 8 (https://cdn.azul.com/zulu/bin/zulu8.28.0.1-jdk8.0.163-win_x64.zip) and put the zip in `Dump/ADCP`
+0. Download Zulu JDK 8 (https://cdn.azul.com/zulu/bin/zulu8.30.0.1-jdk8.0.172-win_x64.zip) and put the zip in `Dump/ADCP`
 
-0. Download Neo4j 3.4.0 (https://neo4j.com/artifact.php?name=neo4j-community-3.4.0-windows.zip) and put the zip in `Dump/ADCP`
+0. Download Neo4j 3.4.1 (https://neo4j.com/artifact.php?name=neo4j-community-3.4.1-windows.zip) and put the zip in `Dump/ADCP`
 
 0. Install Ruby from https://rubyinstaller.org/downloads/ or from your distribution. A 64 bits version is recommended.
 

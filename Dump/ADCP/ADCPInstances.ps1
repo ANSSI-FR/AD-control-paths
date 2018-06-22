@@ -1,9 +1,9 @@
-# https://cdn.azul.com/zulu/bin/zulu8.28.0.1-jdk8.0.163-win_x64.zip
+# https://cdn.azul.com/zulu/bin/zulu8.30.0.1-jdk8.0.172-win_x64.zip
 $jdkFile = "zulu8.30.0.1-jdk8.0.172-win_x64.zip"
 $jdkFolder = "zulu8.30.0.1-jdk8.0.172-win_x64"
-# https://neo4j.com/artifact.php?name=neo4j-community-3.4.0-windows.zip
-$neo4jFile = "neo4j-community-3.4.0-windows.zip"
-$neo4jFolder = "neo4j-community-3.4.0"
+# https://neo4j.com/artifact.php?name=neo4j-community-3.4.1-windows.zip
+$neo4jFile = "neo4j-community-3.4.1-windows.zip"
+$neo4jFolder = "neo4j-community-3.4.1"
 $sourcePath = $PSScriptRoot
 
 function Install-ADCPJava {

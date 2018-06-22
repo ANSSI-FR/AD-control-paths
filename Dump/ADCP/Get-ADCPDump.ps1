@@ -164,17 +164,18 @@ function Get-ADCPDump {
     } else {
         Write-Output-And-Global-Log "[+] Dumping LDAP and SYSVOL data`n"
     }
-    if($dumpExchange.IsPresent) {
+    if($exchangeServer.IsPresent) {
         Write-Output-And-Global-Log "[+] Dumping EXCHANGE data`n"
     }
 
     $dumpLdap = $ldapOnly.IsPresent -or (!$ldapOnly.IsPresent -and !$sysvolOnly.IsPresent)
+    $dumpExchange = $exchangeServer.IsPresent
     $dumpSysvol = $sysvolOnly.IsPresent -or (!$ldapOnly.IsPresent -and !$sysvolOnly.IsPresent)
 
     # Common params for command lines
     $optionalParams = (
         ($ldapPort,         "-n '$ldapPort'"),
-        ($Credential,       "-l '$username' -p '$password'"),
+        ($Credential.UserName,       "-l '$username' -p '$password'"),
         ($domainDnsName,    "-d '$domainDnsName'")
         )
 
