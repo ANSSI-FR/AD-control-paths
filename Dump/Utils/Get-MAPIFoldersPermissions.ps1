@@ -89,7 +89,7 @@ catch {
 # Check for installed EWS on the system, else use redistributable from Github release, or fail
 $EWSDLL = (($(Get-ItemProperty -ErrorAction SilentlyContinue -Path Registry::$(Get-ChildItem -ErrorAction SilentlyContinue -Path 'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Exchange\Web Services'|Sort-Object Name -Descending| Select-Object -First 1 -ExpandProperty Name)).'Install Directory') + "Microsoft.Exchange.WebServices.dll")
 
-if ($false) {       # if (Test-Path $EWSDLL)
+if (Test-Path $EWSDLL) {
   Import-Module $EWSDLL
 }
 elseif (Test-Path $($PSScriptRoot + "\..\Bin\Microsoft.Exchange.WebServices.dll")) {
@@ -166,7 +166,7 @@ If ($TrustAnySSL) {
         }
       }
     }
-  '@
+'@
 
   $TAResults=$Provider.CompileAssemblyFromSource($Params,$TASource)
   $TAAssembly=$TAResults.CompiledAssembly
