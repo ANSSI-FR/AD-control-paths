@@ -215,8 +215,8 @@ function Get-ADCPDump {
             Write-Output-And-Global-Log "[+] Mapping SYSVOL $($sysvolPath)"
             for($j=67; Get-PSDrive ($driveName=[char]$j++) -erroraction 'silentlycontinue'){}
             New-PSDrive -PSProvider FileSystem -Root $sysvolPath -Name $driveName -Credential $Credential -Scope Global -Persist
-            $sysvolPath = $driveName + ':'
-            if (Test-Path $sysvolPath) {
+            $sysvolDrive = $driveName + ':'
+            if (Test-Path $sysvolDrive) {
                 Write-Output-And-Global-Log "[+] Mapping successful"
             }
             else {
@@ -228,16 +228,16 @@ function Get-ADCPDump {
             }
         }
 
-        Get-ChildItem -Path $sysvolPath -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
+        Get-ChildItem -Path $sysvolDrive -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
             $file = $_
             try {
-                $acl = $_ | Get-Acl
-                New-Object -TypeName PSObject -Property @{Path=$file.FullName; Sddl=$acl.Sddl}
+                $rsd = $file.GetAccessControl().GetSecurityDescriptorBinaryForm()
+                New-Object -TypeName PSObject -Property @{UNC=($file.FullName -Replace "^$sysvolDrive","$sysvolPath" ); nTSecurityDescriptor=($rsd|ForEach-Object ToString X2) -join ''}             
             }
             catch {
-                New-Object -TypeName PSObject -Property @{Path=$file.FullName; Sddl="ERROR"}
+                New-Object -TypeName PSObject -Property @{UNC=$file.FullName -Replace "^$sysvolDrive","$sysvolPath"; nTSecurityDescriptor="ERROR"}
             }
-        } | Export-Csv -NoTypeInformation $outputDir\Ldap\$($filesPrefix)_SYSVOL_acl.csv
+        } | Export-Csv -Encoding Unicode -NoTypeInformation $outputDir\Ldap\$($filesPrefix)_SYSVOL_acl.csv
 
         #
         # Deleting net use sysvol in case of explicit authentication
