@@ -8,6 +8,12 @@ which can be visualized as graphs (such as above) and whose purpose is to answer
 
 ---
 ## CHANGES
+New workflow for all steps, automating neo4j setup and import.
+
+Basic Cypher querying through Neo4j REST API, increasing performance
+
+New control paths are added : Kerberos delegation, SCCM dumping utilities for local admins and sessions control paths
+
 Adding EXCHANGE permissions in v1.3 "Who Can Read the CEO's Emails Edition".
 Permissions extracted from AD Users, Mailbox/DB descriptors, RBAC and MAPI folders.
 
@@ -41,7 +47,7 @@ A few false positives were fixed and new control paths were added, so running it
 ### Note
 
 - **Dump** step runs on Windows only (tested on Windows 7 and later).
-- **Import**, **Query** and **Visualize** steps can run on the same machine or on anything supporting Neo4j, Java and Ruby. They have been tested on Windows and Linux.
+- **Import**, **Query** and **Visualize** steps can run on the same machine or on anything supporting Java and Neo4J. They have been tested on Windows and Linux.
 
 ### Building
 
@@ -52,16 +58,6 @@ A few false positives were fixed and new control paths were added, so running it
 0. Download Zulu JDK 8 (https://cdn.azul.com/zulu/bin/zulu8.30.0.1-jdk8.0.172-win_x64.zip) and put the zip in `Dump/ADCP`
 
 0. Download Neo4j 3.4.1 (https://neo4j.com/artifact.php?name=neo4j-community-3.4.1-windows.zip) and put the zip in `Dump/ADCP`
-
-0. Install Ruby from https://rubyinstaller.org/downloads/ or from your distribution. A 64 bits version is recommended.
-
-0. Install the `neography` gem. In an elevated prompt or with sudo:
-
-        gem install neography
-  
-0. If installing on a machine with no Internet connection, grab the gems cache from your Ruby install folder in lib\ruby\gems\<version>\cache, then copy it over and run:
-  
-        gem install -f --local <Path_to>\*.gem
 
 0. Install EWS Managed API (if dumping Exchange permissions) from https://go.microsoft.com/fwlink/?LinkId=255472
 
@@ -185,7 +181,6 @@ To perform these step manually (or in Linux):
 ```
 
 Headers-related errors will be raised and can be ignored. It is still a good idea to have a look at the bad.log file.
-Do not use the "admin-tool import" command, even though it is supposed to do the same thing. Parameters passing is currently bugged.
 
 0. Restart the Neo4j server if it is stopped:
 ```
@@ -205,53 +200,33 @@ Do not use the "admin-tool import" command, even though it is supposed to do the
     Import-ADCPDump |
     Start-ADCPInstance
 
-## 6. QUERYING THE GRAPH DATABASE
+## 6. QUERY THE GRAPH DATABASE
 
-The `Query/query.rb` script (compiled as an exe in the release) is used to query the created Neo4j database.
-
+The `Query/Query.ps1` script is used to query the created Neo4j database.
+	
 ### Basic query to get a graph and paths of all nodes able to take control of the "Domain Admins" group:
-
-    ruby query.rb --quick
-
-You should use --denyacefile if you have non-empty deny relations files:
-
-    ruby query.rb --quick --denyacefile $((dir $env:DUMP\Relations\*.deny.csv) -join ',')
+```
+    .\Query.ps1 -quick
+```    
    
 ### To search for a node from its DN or an email address and get a graph to it (useful if AD is not in English):
+```
+    .\Query.ps1 -search "cn=administrateurs,"
+```
+``` 
+    .\Query.ps1 -search "ceo@domain.local"
+``` 
+  (This will return a node id number)
+```  
+    .\Query.ps1 -graph <node id number> -outFile <JSON filename>
+```    
+  (This produces a json graph file, which you can visualize, see part 6)
 
-    ruby query.rb --search "cn=administrateurs,"
-
-    ruby query.rb --search "ceo@domain.local"
-
-    (This will return a node id number)
-
-    ruby query.rb --graph test.json <node id number>
-
-    (This produces a json graph file, which you can visualize, see part 6)
-
-### Automatic full audit mode (long)
-
-The "automatic mode" will create graphs, paths, and nodes lists for a predefined list of builtin targets:
-
-    ruby query.rb --full --denyacefile $env:DUMP\relations\*.deny.csv
-        [+] running in automatic-mode, lang=en, outdir=out
-        [+] control graph for cn=domain admins,cn=users,dc=
-        [+] found 13 control nodes, max depth is 5
-        [+] control graph with 13 nodes and 12 links
-        [+] found 13 control nodes, max depth is 5
-        [+] control graph with 13 nodes and 13 links
-        [+] found 13 control nodes, max depth is 5
-        [...]
-
-The default output directory is `out` and contains the following generated files:
-
-    ./out
-       |- *.json         # JSON files containing a graph that can then be visualized
-       |- *_nodes.txt    # Lists of nodes existing in the above graphs
-       \- *_paths.txt    # Lists of paths existing in the above graphs
-
-The default targets are searched with their English DN. You can choose another
-language with the `--lang` option. For now, only `en` and `fr` are supported in automatic mode.
+  
+### Progressively increase the ShortestPath algorithm Depth parameter as you visualize and adjust the graph
+```
+    .\Query.ps1 -graph <node id number> -maxDepth 15 -outFile <JSON filename>
+```    
 
 ## 7. VISUALIZE GRAPHS
 
@@ -262,104 +237,14 @@ JSON data files as graphs.
 Open Visualize/index.html with a web brower (Chrome/Chromium is preferred).
 Open one of the generated json files.
 
-For better visibility, you might want to right click -> cluster some similar nodes and to setup hierarchical viewing with the menu on the left.
+For better visibility, you might want to:
+- right click -> cluster some similar nodes
+- setup hierarchical viewing with the menu on the left, especially for email nodes as this will flatten Exchange RBAC nodes
+- disable physics if the graph does not stabilize
+- remove unwanted relationships or nodes with right click -> "Cypher delete to clipboard" and paste into http://localhost:7474 then relaunch the query.
 
-## 8. OTHER QUERYING EXAMPLES
 
-The `Query/query.rb` program can also search paths for non-predefined targets, as illustrated in the following examples:
-
-0. Search for nodes (prints node names and their id ; a node's id can be used instead of its DN in every command):
-
-        $ ./query.rb --search 'admins'
-            cn=domain admins,cn=users,dc=dom2012r2,dc=local [5]
-            cn=enterprise admins,cn=users,dc=dom2012r2,dc=local [6]
-            cn=adminsdholder,cn=system,dc=dom2012r2,dc=local [40]
-            cn=schema admins,cn=users,dc=dom2012r2,dc=local [166]
-            cn=dnsadmins,cn=users,dc=dom2012r2,dc=local [185]
-
-  **Note**: the argument is interpreted as a Java regular expression, enclosed in
-`.*` (so that `domain admins` will match the full DN). As a consequence,
-certain special characters (such as `{`, found in GPO DN) have a meaning for
-the regexp engine. You should manually escape these characters, and search for
-`cn=\\{` to match those DN.
-
-0. Get more informations about a node:
-
-        $ ./query.rb --info 'domain admins'
-        [...]
-        cn=domain admins,cn=users,dc=dom2012r2,dc=local [5]
-            type: ["group"]
-            directly controlling 245 node(s)
-            directly controlled by 6 node(s)
-
-0. Search for nodes controlling another node. We can choose to output results to a
-file or to stdout (the `--` stops option processing, so `domain admins` is our
-target, and not the output file):
-
-        $ ./query.rb --nodes -- 'domain admins'
-            [+] control nodes to node number 5
-            [+] found 13 control nodes, max depth is 5
-            cn=domain admins,cn=users,dc=dom2012r2,dc=local
-            cn=system,cn=wellknown security principals,cn=configuration,dc=dom2012r2,dc=local
-            cn=administrators,cn=builtin,dc=dom2012r2,dc=local
-            cn=enterprise admins,cn=users,dc=dom2012r2,dc=local
-            cn=users,dc=dom2012r2,dc=local
-            cn=administrator,cn=users,dc=dom2012r2,dc=local
-            cn=builtin,dc=dom2012r2,dc=local
-            dc=dom2012r2,dc=local
-            cn=domain controllers,cn=users,dc=dom2012r2,dc=local
-            cn={31b2f340-016d-11d2-945f-00c04fb984f9},cn=policies,cn=system,dc=dom2012r2,dc=local
-            cn=creator owner,cn=wellknown security principals,cn=configuration,dc=dom2012r2,dc=local
-            cn=policies,cn=system,dc=dom2012r2,dc=local
-            cn=system,dc=dom2012r2,dc=local
-
-0. We can filter the previous result, for example by limiting ourselves to nodes
-with the "user" type:
-
-        $ ./query.rb --nodes /tmp/hitlist.txt --nodetype user 'domain admins'
-            [+] control nodes with type user to node number 5
-            [+] found 13 control nodes, max depth is 5
-
-        $ cat /tmp/hitlist.txt
-            cn=administrator,cn=users,dc=dom2012r2,dc=local
-
-0. Search for control paths to our node. We will print all the shortest possible
-paths to domain admins into `/tmp/paths.txt`:
-
-        $ ./query.rb --path /tmp/paths.txt --type short 'domain admins'
-            [+] short control paths to node number 5
-            [+] found 13 control nodes, max depth is 5
-            [+] found 38 paths
-
-        $ head -3 /tmp/paths.txt
-            cn=domain admins,cn=users,dc=dom2012r2,dc=local
-            cn=system,cn=wellknown security principals,cn=configuration,dc=dom2012r2,dc=local stand_right_write_dac cn=domain admins,cn=users,dc=dom2012r2,dc=local
-            cn=system,cn=wellknown security principals,cn=configuration,dc=dom2012r2,dc=local stand_right_write_owner cn=domain admins,cn=users,dc=dom2012r2,dc=local
-
-0. Create the full control graph for our node, and save it to
-`/tmp/fullgraph.json`:
-
-        $ ./query.rb --graph /tmp/fullgraph.json --type full 'domain admins'
-            [+] full control graph to node number 5
-            [+] found 13 control nodes, max depth is 5
-            [+] control graph with 13 nodes and 59 links
-
-0. By default, we search for paths **to** a node (i.e who can control a node). We
-can also try to search for paths **from** a node (i.e what resources are
-controlled by this node). Be careful however, as some powerful nodes (such as domain
-admins) control everything in the domain. This can lead to never-ending
-queries. You can limit the maximum search depth with the `--maxdepth` option.
-
-        $ ./query.rb --path --direction from --type short 'cn=guest,cn=users,dc=dom2012r2,dc=local'
-            [+] short control paths from node number 135
-            [+] found 2 control nodes, max depth is 1
-            [+] found 2 paths
-            cn=guest,cn=users,dc=dom2012r2,dc=local
-            cn=guests,cn=builtin,dc=dom2012r2,dc=local  group_member cn=guest,cn=users,dc=dom2012r2,dc=local
-
-0. See `./query.rb --help` for a full list of possible options.
-
-## 9. AUTHORS
+## 8. AUTHORS
 
 Jean-Baptiste Galet - ANSSI - 2017-2018
 
