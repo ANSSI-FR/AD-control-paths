@@ -154,3 +154,10 @@ $RECYCLE.BIN/
 
 # Mac desktop service store files
 .DS_Store
+
+# Libdev folders
+Dump/Src/AceFilter/libdev/*
+!Dump/Src/AceFilter/libdev/readme.txt
+
+Dump/Src/ControlRelationsProviders/libdev/*
+!Dump/Src/ControlRelationsProviders/libdev/readme.txt
