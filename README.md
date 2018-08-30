@@ -202,7 +202,8 @@ Headers-related errors will be raised and can be ignored. It is still a good ide
 
 ## 6. QUERY THE GRAPH DATABASE
 
-The `Query/Query.ps1` script is used to query the created Neo4j database.
+The `Query/Query.ps1` script is used to query the created Neo4j database. 
+Use the -neo4jPort parameter if Start-ADCPInstance binded to something else than the default 7474/TCP (see console).
 	
 ### Basic query to get a graph and paths of all nodes able to take control of the "Domain Admins" group:
 ```

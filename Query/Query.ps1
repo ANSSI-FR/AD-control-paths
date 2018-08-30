@@ -177,6 +177,7 @@ $graphResult = Execute-Invoke-RestMethod -Method Post  -Uri $Uri -Credential $Cr
 If ( $PSBoundParameters.ContainsKey('console') ) {
   $graphResult[0] | ConvertTo-Json -depth 100 
 }
+Write-Output "[*]Writing result to Json file $outFile"
 $graphResult[0] | ConvertTo-Json  -depth 100 | Out-File $outFile
 }
 

@@ -115,7 +115,6 @@ function Prepare-ADCPDump {
   -O '$inputDir\Relations\$filesPrefix.control.ad.deleg.csv'
 "@
 
-    # Filter
     Execute-Cmd-Wrapper -cmd @"
 .\Bin\AceFilter.exe
   --loglvl='$logLevel'
@@ -129,7 +128,9 @@ function Prepare-ADCPDump {
   ldpsch='$inputDir\Ldap\$($filesPrefix)_LDAP_sch.csv'
   ldpace='$inputDir\Ldap\$($filesPrefix)_LDAP_ace.csv'
 "@
-
+    
+    If (Test-Path -Path '$inputDir\Ldap\$($filesPrefix)_EWS_foldersd.csv') {
+# OWNER DB
     Execute-Cmd-Wrapper -cmd @"
 .\Bin\Control.Exch.Db.exe
   -D '$logLevel'
@@ -210,6 +211,7 @@ function Prepare-ADCPDump {
   ldpsch='$inputDir\Ldap\$($filesPrefix)_LDAP_sch.csv'
   ldpace='$inputDir\Ldap\$($filesPrefix)_EWS_foldersd.csv'
 "@
+  }
 
     Execute-Cmd-Wrapper -cmd @"
 .\Bin\Control.MakeAllNodes.exe
