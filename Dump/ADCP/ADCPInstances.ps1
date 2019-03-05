@@ -1,9 +1,9 @@
-# https://cdn.azul.com/zulu/bin/zulu8.30.0.1-jdk8.0.172-win_x64.zip
-$jdkFile = "zulu8.30.0.1-jdk8.0.172-win_x64.zip"
-$jdkFolder = "zulu8.30.0.1-jdk8.0.172-win_x64"
-# https://neo4j.com/artifact.php?name=neo4j-community-3.4.1-windows.zip
-$neo4jFile = "neo4j-community-3.4.1-windows.zip"
-$neo4jFolder = "neo4j-community-3.4.1"
+# https://cdn.azul.com/zulu/bin/zulu8.36.0.1-ca-jdk8.0.202-win_x64.zip
+$jdkFile = "zulu8.36.0.1-ca-jdk8.0.202-win_x64.zip"
+$jdkFolder = "zulu8.36.0.1-ca-jdk8.0.202-win_x64"
+# https://neo4j.com/artifact.php?name=neo4j-community-3.5.3-windows.zip
+$neo4jFile = "neo4j-community-3.5.3-windows.zip"
+$neo4jFolder = "neo4j-community-3.5.3"
 $sourcePath = $PSScriptRoot
 
 function Install-ADCPJava {
@@ -87,7 +87,7 @@ function Remove-ADCPInstance {
         Write-Error "ERROR: Invalid InstanceID"
         return
     }
-    
+
     Remove-Item -Path $instancePath -Recurse -Force
 }
 
@@ -106,11 +106,17 @@ function Start-ADCPInstance {
         return
     }
 
-    Import-Module $instancePath\$neo4jFolder\bin\Neo4j-Management -Force
-    Set-Neo4jEnv -Name "JAVA_HOME" -Value $destPath\$jdkFolder
-    Remove-Item Env:NEO4J_CONF -ErrorAction SilentlyContinue
-    Set-Neo4jEnv -Name "NEO4J_HOME" -Value $instancePath\$neo4jFolder
+    $job_script =[scriptblock]::Create("
+        `$host.UI.RawUI.WindowTitle = 'Neo4j for instance $instanceID'
+        Import-Module $instancePath\$neo4jFolder\bin\Neo4j-Management -Force
+        Set-Neo4jEnv -Name 'JAVA_HOME' -Value $destPath\$jdkFolder
+        Remove-Item Env:NEO4J_CONF -ErrorAction SilentlyContinue
+        Set-Neo4jEnv -Name 'NEO4J_HOME' -Value $instancePath\$neo4jFolder
 
-    # Launch Neo4j
-    Invoke-Neo4j console
+        # Launch Neo4j
+        Invoke-Neo4j console
+    ")
+
+    $proc = Start-Process powershell $job_script
+    $proc
 }
