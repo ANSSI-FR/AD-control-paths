@@ -69,6 +69,9 @@ static LPTSTR gcs_GpLinkAppliesTo[3] = { _T("organizationalunit"),_T("domaindns"
 static GUID gcs_GuidPropertySetMembership = { 0xbc0ac240, 0x79a9, 0x11d0, { 0x90, 0x20, 0x00, 0xc0, 0x4f, 0xc2, 0xd4, 0xcf } }; // _T("bc0ac240-79a9-11d0-9020-00c04fc2d4cf");
 static LPTSTR gcs_MembershipAppliesTo[1] = { _T("group") };
 
+static GUID gcs_GuidPropertySetPublicInfo = { 0xe48d0154, 0xbcf8, 0x11d1, { 0x87, 0x02, 0x00, 0xc0, 0x4f, 0xb9, 0x60, 0x50 } }; // _T("e48d0154-bcf8-11d1-8702-00c04fb96050");
+static LPTSTR gcs_PublicInfoAppliesTo[4] = { _T("user"), _T("computer"), _T("msds-managedserviceaccount"), _T("inetorgperson") };
+
 static GUID gcs_GuidValidatedWriteSelfMembership = { 0xbf9679c0, 0x0de6, 0x11d0, { 0xa2, 0x85, 0x00, 0xaa, 0x00, 0x30, 0x49, 0xe2 } }; // Same as gs_GuidPropertyMember. thanks AD. GUIDs are no longer "UNIQUE"
 static LPTSTR gcs_SelfMembershipAppliesTo[1] = { _T("group") };
 
@@ -79,6 +82,7 @@ static CONTROL_GUID gcs_GuidsControlProperties[] = {
 	{ &gcs_GuidPropertyGpLink, WRITE_PROP_GPLINK, gcs_GpLinkAppliesTo, ARRAY_COUNT(gcs_GpLinkAppliesTo)},
 	{ &gcs_GuidPropertyGpcFileSysPath, WRITE_PROP_GPC_FILE_SYS_PATH, gcs_GpcFileSysPathAppliesTo, ARRAY_COUNT(gcs_GpcFileSysPathAppliesTo) },
 	{ &gcs_GuidPropertySetMembership, WRITE_PROPSET_MEMBERSHIP, gcs_MembershipAppliesTo, ARRAY_COUNT(gcs_MembershipAppliesTo) },
+	{ &gcs_GuidPropertySetPublicInfo, WRITE_PROPSET_PUBINFOSPN, gcs_PublicInfoAppliesTo, ARRAY_COUNT(gcs_PublicInfoAppliesTo) },
 };
 
 // Control extended rights
@@ -124,7 +128,7 @@ void PLUGIN_GENERIC_HELP(
 	API_LOG(Bypass, _T("- Extended rights : All, User-Force-Change-Password, DS-Replication-Get-Changes-All, AdmPwd (LAPS)"));
 	API_LOG(Bypass, _T("- Validated writes : All, Self-Membership"));
 	API_LOG(Bypass, _T("- Write properties : Member, GPLink"));
-	API_LOG(Bypass, _T("- Write property-sets : Membership"));
+	API_LOG(Bypass, _T("- Write property-sets : Membership, PublicInfo(SPN)"));
 	API_LOG(Bypass, _T("This filter set 'relations' on the ACE, and must be combined with the MSR writer for these relations to be output."));
 }
 
@@ -161,6 +165,7 @@ BOOL PLUGIN_FILTER_FILTERACE(
 
 	- Property sets :
 		- membership (contains member) => group class (tested, even though MSDN and GUI seems to think groups cannot get this)
+		- Public-Information (contains Service-Principal-Name) => users/computers classes. Accounts can be kerberoasted etc.
 
 	- Extended rights (ADS_RIGHT_DS_CONTROL_ACCESS) :
 		- all (empty guid)
