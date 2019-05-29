@@ -13,7 +13,7 @@
 #pragma warning(default:4201)
 
 /* --- DEFINES -------------------------------------------------------------- */
-#define ACE_REL_COUNT                           (33)
+#define ACE_REL_COUNT                           (34)
 #define SET_RELATION(ace, rel)                  BITMAP_SET_BIT((ace)->computed.relation, rel)
 #define HAS_RELATION(ace, rel)                  BITMAP_GET_BIT((ace)->computed.relation, rel)
 
@@ -63,6 +63,7 @@ typedef enum _ACE_RELATION {
     WRITE_PROP_GPLINK = __COUNTER__,
     WRITE_PROP_GPC_FILE_SYS_PATH = __COUNTER__,
     WRITE_PROPSET_MEMBERSHIP = __COUNTER__,
+	WRITE_PROPSET_PUBINFOSPN = __COUNTER__,
     WRITE_PROPSET_PERSONALINFO = __COUNTER__,
 
     FS_RIGHT_WRITEDATA_ADDFILE = __COUNTER__,
