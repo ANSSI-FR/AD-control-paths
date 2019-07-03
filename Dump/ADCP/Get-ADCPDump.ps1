@@ -204,27 +204,26 @@ function Get-ADCPDump {
     }
 
     if($dumpSysvol) {
-        Write-Output-And-Global-Log "[+] Dumping SYSVOL permissions"
-        #
-        # net use sysvol in case of explicit authentication
-        #
+        Write-Output-And-Global-Log "[+] Mapping SYSVOL $($sysvolPath)"
+        for($j=67; Get-PSDrive ($driveName=[char]$j++) -erroraction 'silentlycontinue'){}
         if($Credential -ne [System.Management.Automation.PSCredential]::Empty) {
-            Write-Output-And-Global-Log "[+] Mapping SYSVOL $($sysvolPath)"
-            for($j=67; Get-PSDrive ($driveName=[char]$j++) -erroraction 'silentlycontinue'){}
             New-PSDrive -PSProvider FileSystem -Root $sysvolPath -Name $driveName -Credential $Credential -Scope Global -Persist
-            $sysvolDrive = $driveName + ':'
-            if (Test-Path $sysvolDrive) {
-                Write-Output-And-Global-Log "[+] Mapping successful"
-            }
-            else {
-                Write-Output-And-Global-Log "[-] Mapping FAILED"
-                Write-Output-And-Global-Log "[-] If the Error is Access denied, in HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths , add a REG_SZ value '\\*\SYSVOL' with RequiredMutualAuthentication=0"
-                Write-Output-And-Global-Log "[-] Don't forget to remove it!"
-                $globalTimer.Stop()
-                Write-Output-And-Global-Log "[+] Done. Total time: $($globalTimer.Elapsed)`n"
-            }
         }
-
+        else {
+            New-PSDrive -PSProvider FileSystem -Root $sysvolPath -Name $driveName -Scope Global -Persist
+        }
+        $sysvolDrive = $driveName + ':'
+        if (Test-Path $sysvolDrive) {
+            Write-Output-And-Global-Log "[+] Mapping successful"
+            Write-Output-And-Global-Log "[+] Dumping SYSVOL permissions"
+        }
+        else {
+            Write-Output-And-Global-Log "[-] Mapping FAILED"
+            Write-Output-And-Global-Log "[-] If the Error is Access denied, in HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\NetworkProvider\HardenedPaths , add a REG_SZ value '\\*\SYSVOL' with RequiredMutualAuthentication=0"
+            Write-Output-And-Global-Log "[-] Don't forget to remove it!"
+            $globalTimer.Stop()
+            Write-Output-And-Global-Log "[+] Done. Total time: $($globalTimer.Elapsed)`n"
+        }
         Get-ChildItem -Path $sysvolDrive -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
             $file = $_
             try {
@@ -235,18 +234,11 @@ function Get-ADCPDump {
                 New-Object -TypeName PSObject -Property @{UNC=$file.FullName -Replace "^$sysvolDrive","$sysvolPath"; nTSecurityDescriptor="ERROR"}
             }
         } | Export-Csv -Encoding Unicode -NoTypeInformation $outputDir\Ldap\$($filesPrefix)_SYSVOL_acl.csv
-
-        #
-        # Deleting net use sysvol in case of explicit authentication
-        #
-        if($Credential -ne [System.Management.Automation.PSCredential]::Empty) {
-            Write-Output-And-Global-Log "[+] Unmapping SYSVOL"
-            Remove-PSDrive -Name $driveName
-        }
+        Remove-PSDrive -Name $driveName
     }
 
-    $obj = New-Object -TypeName PSObject
-    $obj | Add-Member -MemberType NoteProperty -name 'inputDir' -value $outputDir -PassThru |
-           Add-member -MemberType NoteProperty -name 'domainDnsName' -value $domainDnsName -PassThru |
-           Add-Member -MemberType NoteProperty -name 'logLevel' -value $logLevel -PassThru
+$obj = New-Object -TypeName PSObject
+$obj | Add-Member -MemberType NoteProperty -name 'inputDir' -value $outputDir -PassThru |
+       Add-member -MemberType NoteProperty -name 'domainDnsName' -value $domainDnsName -PassThru |
+       Add-Member -MemberType NoteProperty -name 'logLevel' -value $logLevel -PassThru
 }

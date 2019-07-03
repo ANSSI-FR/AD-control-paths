@@ -108,6 +108,17 @@ The simplest example is:
         -domainController <DC ip or host>
         -domainDnsName    <domain FQDN>
 
+Or with Exchange-related data:
+
+    Import-Module .\ADCP
+    $creds = Get-Credential
+    Get-ADCPDump
+        -outputDir          <output directory>
+        -domainController   <DC ip or host>
+        -domainDnsName      <domain FQDN>
+        -exchangeServer     <exchange host>
+        -exchangeCredential $creds
+
 - `-domainController` can be an real domain controller, or a machine exposing the LDAP directory from a re-mounted `ntds.dit` using `dsamain`.
 
 This produces some `.csv` and `.log` files as follow:
