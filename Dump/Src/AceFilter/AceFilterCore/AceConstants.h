@@ -13,7 +13,7 @@
 #pragma warning(default:4201)
 
 /* --- DEFINES -------------------------------------------------------------- */
-#define ACE_REL_COUNT                           (34)
+#define ACE_REL_COUNT                           (33)
 #define SET_RELATION(ace, rel)                  BITMAP_SET_BIT((ace)->computed.relation, rel)
 #define HAS_RELATION(ace, rel)                  BITMAP_GET_BIT((ace)->computed.relation, rel)
 
