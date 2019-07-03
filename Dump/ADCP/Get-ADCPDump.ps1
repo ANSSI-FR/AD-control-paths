@@ -169,13 +169,12 @@ function Get-ADCPDump {
     }
 
     $dumpLdap = $ldapOnly.IsPresent -or (!$ldapOnly.IsPresent -and !$sysvolOnly.IsPresent)
-    $dumpExchange = $exchangeServer.IsPresent
     $dumpSysvol = $sysvolOnly.IsPresent -or (!$ldapOnly.IsPresent -and !$sysvolOnly.IsPresent)
 
     # Common params for command lines
     $optionalParams = (
         ($ldapPort,         "-n '$ldapPort'"),
-        ($Credential.UserName,       "-l '$username' -p '$password'"),
+        ($Credential.username,       "-l '$username' -p '$password'"),
         ($domainDnsName,    "-d '$domainDnsName'")
         )
 
@@ -192,22 +191,20 @@ function Get-ADCPDump {
 "@
 
         # Exchange requires LDAP DATA (LDAP_obj.csv)
-        if ($dumpExchange) {
-            $ExchangeUsername = $ExchangeCredential.UserName
-            $ExchangePassword = $ExchangeCredential.GetNetworkCredential().Password
+        if ($ExchangeServer -and $ExchangeCredential) {
             # Inbox Folder MAPI SD
             Execute-Cmd-Wrapper -cmd @"
 .\Utils\Get-MAPIFoldersPermissions.ps1
 -infile '$outputDir\Ldap\$($filesPrefix)_LDAP_obj.csv'
 -outfile '$outputDir\Ldap\$($filesPrefix)_EWS_foldersd.csv'
 -server $ExchangeServer
--username $ExchangeUsername
--password $ExchangePassword
+-credential `$ExchangeCredential
 "@
         }
     }
 
     if($dumpSysvol) {
+	    Write-Output-And-Global-Log "[+] Dumping SYSVOL permissions"
         #
         # net use sysvol in case of explicit authentication
         #
@@ -215,8 +212,8 @@ function Get-ADCPDump {
             Write-Output-And-Global-Log "[+] Mapping SYSVOL $($sysvolPath)"
             for($j=67; Get-PSDrive ($driveName=[char]$j++) -erroraction 'silentlycontinue'){}
             New-PSDrive -PSProvider FileSystem -Root $sysvolPath -Name $driveName -Credential $Credential -Scope Global -Persist
-            $sysvolDrive = $driveName + ':'
-            if (Test-Path $sysvolDrive) {
+            $sysvolPath = $driveName + ':'
+            if (Test-Path $sysvolPath) {
                 Write-Output-And-Global-Log "[+] Mapping successful"
             }
             else {
@@ -228,16 +225,16 @@ function Get-ADCPDump {
             }
         }
 
-        Get-ChildItem -Path $sysvolDrive -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
+        Get-ChildItem -Path $sysvolPath -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
             $file = $_
             try {
-                $rsd = $file.GetAccessControl().GetSecurityDescriptorBinaryForm()
-                New-Object -TypeName PSObject -Property @{UNC=($file.FullName -Replace "^$sysvolDrive","$sysvolPath" ); nTSecurityDescriptor=($rsd|ForEach-Object ToString X2) -join ''}             
+                $acl = $_ | Get-Acl
+                New-Object -TypeName PSObject -Property @{Path=$file.FullName; Sddl=$acl.Sddl}
             }
             catch {
-                New-Object -TypeName PSObject -Property @{UNC=$file.FullName -Replace "^$sysvolDrive","$sysvolPath"; nTSecurityDescriptor="ERROR"}
+                New-Object -TypeName PSObject -Property @{Path=$file.FullName; Sddl="ERROR"}
             }
-        } | Export-Csv -Encoding Unicode -NoTypeInformation $outputDir\Ldap\$($filesPrefix)_SYSVOL_acl.csv
+        } | Export-Csv -NoTypeInformation $outputDir\Ldap\$($filesPrefix)_SYSVOL_acl.csv
 
         #
         # Deleting net use sysvol in case of explicit authentication

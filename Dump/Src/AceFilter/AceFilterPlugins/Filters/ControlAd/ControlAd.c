@@ -82,7 +82,7 @@ static CONTROL_GUID gcs_GuidsControlProperties[] = {
 	{ &gcs_GuidPropertyGpLink, WRITE_PROP_GPLINK, gcs_GpLinkAppliesTo, ARRAY_COUNT(gcs_GpLinkAppliesTo)},
 	{ &gcs_GuidPropertyGpcFileSysPath, WRITE_PROP_GPC_FILE_SYS_PATH, gcs_GpcFileSysPathAppliesTo, ARRAY_COUNT(gcs_GpcFileSysPathAppliesTo) },
 	{ &gcs_GuidPropertySetMembership, WRITE_PROPSET_MEMBERSHIP, gcs_MembershipAppliesTo, ARRAY_COUNT(gcs_MembershipAppliesTo) },
-	{ &gcs_GuidPropertySetPublicInfo, WRITE_PROPSET_PUBINFOSPN, gcs_PublicInfoAppliesTo, ARRAY_COUNT(gcs_PublicInfoAppliesTo) },
+	{ &gcs_GuidPropertySetPublicInfo, WRITE_PROPSET_PUBINFO, gcs_PublicInfoAppliesTo, ARRAY_COUNT(gcs_PublicInfoAppliesTo) },
 };
 
 // Control extended rights
@@ -128,7 +128,7 @@ void PLUGIN_GENERIC_HELP(
 	API_LOG(Bypass, _T("- Extended rights : All, User-Force-Change-Password, DS-Replication-Get-Changes-All, AdmPwd (LAPS)"));
 	API_LOG(Bypass, _T("- Validated writes : All, Self-Membership"));
 	API_LOG(Bypass, _T("- Write properties : Member, GPLink"));
-	API_LOG(Bypass, _T("- Write property-sets : Membership, PublicInfo(SPN)"));
+	API_LOG(Bypass, _T("- Write property-sets : Membership, PublicInfo(SPN,alt-security-identities)"));
 	API_LOG(Bypass, _T("This filter set 'relations' on the ACE, and must be combined with the MSR writer for these relations to be output."));
 }
 
@@ -165,7 +165,7 @@ BOOL PLUGIN_FILTER_FILTERACE(
 
 	- Property sets :
 		- membership (contains member) => group class (tested, even though MSDN and GUI seems to think groups cannot get this)
-		- Public-Information (contains Service-Principal-Name) => users/computers classes. Accounts can be kerberoasted etc.
+		- Public-Information (contains Service-Principal-Name => users/computers classes. Accounts can be kerberoasted etc. Contains Alt-Security-Identities => maps x509 certs to the user account)
 
 	- Extended rights (ADS_RIGHT_DS_CONTROL_ACCESS) :
 		- all (empty guid)

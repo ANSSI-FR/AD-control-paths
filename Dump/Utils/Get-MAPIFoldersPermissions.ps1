@@ -20,13 +20,17 @@ Output CSV file with PR_NT_SECURITY_DESCRIPTORS in hex
 
 Exchange CAS
 
+.PARAMETER credential
+
+Result of Get-Credential prompt (secure)
+
 .PARAMETER username
 
 Username of an Exchange Trusted Subsystem user (UPN or Netbios)
 
 .PARAMETER password
 
-Password
+Password (visible on command line, insecure)
 
 .PARAMETER Threads
 
@@ -39,6 +43,12 @@ Switch to trust any certificate.
 .EXAMPLE
 
 .\Get-MAPIFoldersPermissions.ps1 -infile '.\20170530_test.local\Ldap\TE_LDAP_obj.csv' -outfile '.\20170530_test.local\Ldap\TE_EWS_foldersd.csv' -server 192.168.67.128 -username TEST\exchadmin -password ...
+
+.EXAMPLE
+
+$exchcreds = Get-Credential
+.\Get-MAPIFoldersPermissions.ps1 -infile '.\20170530_test.local\Ldap\TE_LDAP_obj.csv' -outfile '.\20170530_test.local\Ldap\TE_EWS_foldersd.csv' -server 192.168.67.128 -credential $exchcreds
+
 
 .NOTES
 #>
@@ -53,11 +63,14 @@ Param (
 
   [parameter( Mandatory=$false, Position=2)]
   [string]$server,
+  
+  [parameter( Mandatory=$false, Position=3)]
+  [object]$credential,
 
-  [parameter( Mandatory=$true, Position=3)]
+  [parameter( Mandatory=$false, Position=3)]
   [string]$username,
 
-  [parameter( Mandatory=$true, Position=4)]
+  [parameter( Mandatory=$false, Position=4)]
   [string]$password,
 
   [parameter( Mandatory=$false, Position=5)]
@@ -71,15 +84,10 @@ Param (
 Begin {
 
 try {
-  # Powershell v2 Import-Csv does not have -Encoding
-  #$tmpfile = $infile+".tmp"
-  #Get-Content -Encoding Unicode $infile | Out-File -Encoding Unicode $tmpfile
-  #$EmailAddress = Import-Csv $tmpfile | Where-Object {$_.mail -ne "" -and $_.mail -notlike "SystemMailbox*" -and $_.mail -notlike "HealthMailbox*"} | Select mail 
-  #Remove-Item $tmpfile
   $EmailAddress = Import-Csv $infile -Encoding Unicode | Where-Object {$_.mail -ne "" -and $_.mail -notlike "SystemMailbox*" -and $_.mail -notlike "HealthMailbox*"} | Select mail 
 }
 catch {
-  #Error[0].Exception
+  Error[0].Exception
 }
 
 #$EmailAddress
@@ -90,6 +98,7 @@ catch {
 $EWSDLL = (($(Get-ItemProperty -ErrorAction SilentlyContinue -Path Registry::$(Get-ChildItem -ErrorAction SilentlyContinue -Path 'Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Exchange\Web Services'|Sort-Object Name -Descending| Select-Object -First 1 -ExpandProperty Name)).'Install Directory') + "Microsoft.Exchange.WebServices.dll")
 
 if (Test-Path $EWSDLL) {
+  "EWS installation detected"
   Import-Module $EWSDLL
 }
 elseif (Test-Path $($PSScriptRoot + "\..\Bin\Microsoft.Exchange.WebServices.dll")) {
@@ -110,9 +119,7 @@ else {
 $ExchangeVersion = [Microsoft.Exchange.WebServices.Data.ExchangeVersion]::Exchange2010_SP2
 
 # Setup filters
-
 # Search only for Inbox
-
 $inboxFilter = new-object Microsoft.Exchange.WebServices.Data.SearchFilter+IsEqualTo([Microsoft.Exchange.WebServices.Data.FolderSchema]::DisplayName, "Inbox")
 $sentmailFilter = new-object Microsoft.Exchange.WebServices.Data.SearchFilter+IsEqualTo([Microsoft.Exchange.WebServices.Data.FolderSchema]::DisplayName, "Sent Items")
 
@@ -130,12 +137,14 @@ $compoundFilter.add($elementsFilter)
 # Create Exchange Service Object
 $service = New-Object Microsoft.Exchange.WebServices.Data.ExchangeService($ExchangeVersion)
 # Set Credentials to use two options are availible Option1 to use explict credentials or Option 2 use the Default (logged On) credentials
-If ($username) {
+If ($username -and $password) {
   #Credentials Option 1 using UPN for the windows Account
-  $psCred = $Credentials
   $creds = New-Object System.Net.NetworkCredential($username,$password)
   $service.Credentials = $creds
-  #$service.TraceEnabled = $true
+}
+ElseIf ($credential) {
+  "Using exchcreds"
+  $service.Credentials = $credential.GetNetworkCredential()
 }
 Else {
   #Credentials Option 2
@@ -182,11 +191,12 @@ If ($TrustAnySSL) {
 $uri=[system.URI] "https://$server/ews/exchange.asmx"
 $service.Url = $uri
 
-# Test EWS Connectivity
+"Test EWS Connectivity"
 $testFolder = $null
 $testFolderId = new-object Microsoft.Exchange.WebServices.Data.FolderId([Microsoft.Exchange.WebServices.Data.WellKnownFolderName]::"Root")
 $testFolderView = New-Object Microsoft.Exchange.WebServices.Data.FolderView(1)
-
+$service
+$service.Credentials
 try {
   $service.FindFolders($testFolderId, $testFolderView) | Out-Null
 }
@@ -194,6 +204,7 @@ catch {
   $Error[0].Exception
   exit 1
 }
+"OK EWS Connectivity"
 }
 
 Process {
@@ -323,10 +334,6 @@ catch {
   continue
 }
 
-#$mtx.WaitOne() | Out-Null
-#$MailboxName +" " + $fiResult.TotalCount + " folders" | Out-File -FilePath $outfile -Append -Encoding Unicode
-#$mtx.ReleaseMutex()
-
 if($fiResult.TotalCount -eq 0) {
   continue
 }
@@ -354,6 +361,6 @@ ForEach ($Folder in $fiResult) {
 }
 }
 catch{
-  #$Error[0].Exception
+  $Error[0].Exception
 }
 }
