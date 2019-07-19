@@ -12,7 +12,7 @@ function Install-ADCPJava {
     )
 
     # Expand JRE
-    If (-not (Test-Path -Path $destPath/$jdkFolder)) {
+    If (-not (Test-Path -Path $destPath/$jdkFolder/bin)) {
         Expand-Archive -LiteralPath $sourcePath\$jdkFile -DestinationPath $destPath
     }
 }
