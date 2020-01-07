@@ -55,9 +55,9 @@ A few false positives were fixed and new control paths were added, so running it
 
 ### Prerequisites
 
-0. Download Zulu JDK 8 (https://cdn.azul.com/zulu/bin/zulu8.30.0.1-jdk8.0.172-win_x64.zip) and put the zip in `Dump/ADCP`
+0. Download Zulu JDK 8 (https://cdn.azul.com/zulu/bin/zulu8.36.0.1-ca-jdk8.0.202-win_x64.zip) and put the zip in `Dump/ADCP`
 
-0. Download Neo4j 3.4.1 (https://neo4j.com/artifact.php?name=neo4j-community-3.4.1-windows.zip) and put the zip in `Dump/ADCP`
+0. Download Neo4j 3.4.1 (https://neo4j.com/artifact.php?name=neo4j-community-3.5.3-windows.zip) and put the zip in `Dump/ADCP`
 
 0. Install EWS Managed API (if dumping Exchange permissions) from https://go.microsoft.com/fwlink/?LinkId=255472
 
